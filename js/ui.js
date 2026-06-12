@@ -106,10 +106,21 @@ class UI {
 
   _showAbout() {
     this._modal(`
-      <h2>Sobre o RINGUE</h2>
+      <h2>Sobre o RINGUE 🥊</h2>
       <p>Simulador de boxe gerencial inspirado em Football Manager, LEATHER e Boxing Manager.</p>
-      <p>Gerencie a carreira de um atleta: treine, escolha lutas, construa um legado.</p>
-      <p style="color:#888; font-size:.85em; margin-top:1rem">RINGUE v0.6.0 — Modo Atleta completo · Modo Academia em desenvolvimento</p>
+      <p>Construa um atleta do zero, suba nos rankings, conquiste cinturões mundiais e deixe um legado — ou gerencie uma academia e revele a próxima geração de campeões.</p>
+      <ul style="margin:12px 0 0 1.2em; line-height:1.9; font-size:.9em">
+        <li>4 organizações mundiais com rankings próprios (WBC · WBA · IBF · WBO)</li>
+        <li>53 promotoras com afiliação por federação e matchmaking por contrato</li>
+        <li>Sistema GOAT com checklist de 10 critérios + Hall da Fama</li>
+        <li>~4.800 lutadores NPC em 12 categorias de peso</li>
+        <li>Transição Atleta → Academia com bônus de legado</li>
+      </ul>
+      <p style="color:#888; font-size:.82em; margin-top:16px">
+        RINGUE v1.0.0 — Primeiro lançamento público 🎉<br>
+        Modo Atleta completo · Modo Academia completo · Modo Federação em breve<br>
+        <a href="https://github.com/Mateuskage10332608/RINGUE" style="color:#4a9eff">github.com/Mateuskage10332608/RINGUE</a>
+      </p>
     `);
   }
   // MODE SELECT
