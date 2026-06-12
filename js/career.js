@@ -1822,16 +1822,46 @@ class GameState {
       return [];
     }
 
-    const p = this.player;
+    const p          = this.player;
     const agentBonus = this.staffBonus('agent');
-    const eligible = PROMOTERS.filter(promoter =>
-      p.wins >= promoter.minWins ||
-      p.popularity + p.reputation >= promoter.minWins * 5
-    );
-    const pool = eligible.length ? eligible : [PROMOTERS[PROMOTERS.length - 1]];
+    const nat        = p.nationality;
+    const cont       = NAMES[nat]?.continent || 'americas';
+    const wins       = p.wins;
+    const rank       = p.ranking || 99;
+
+    // Escada geográfica de acesso às promotoras:
+    //   0–4 vitórias  → apenas nacionais do mesmo país
+    //   5–11 vitórias → nacionais do país + continentais do mesmo continente
+    //   12–19 vitórias (ou top-30) → todo o espectro regional + globais apenas se top-15
+    //   20+ vitórias (ou top-10)   → todas, incluindo globais
+    const canAccessGlobal      = wins >= 20 || rank <= 10;
+    const canAccessContinental = wins >= 5  || rank <= 40;
+    const canAccessForeignNat  = wins >= 12 || rank <= 30;
+
+    const eligible = PROMOTERS.filter(promoter => {
+      // Verifica requisito mínimo de vitórias da promotora
+      const meetsMin = wins >= promoter.minWins ||
+        p.popularity + p.reputation >= promoter.minWins * 5;
+      if (!meetsMin) return false;
+
+      if (promoter.tier === 'global')      return canAccessGlobal;
+      if (promoter.tier === 'continental') return canAccessContinental && promoter.scope === cont;
+      // nacional
+      if (promoter.scope === nat)          return true;          // sempre pode contratar do próprio país
+      if (canAccessForeignNat)             return NAMES[promoter.scope]?.continent === cont; // mesmo continente
+      return false;
+    });
+
+    // Garantia: se não houver nenhuma elegível, pega as 2 nacionais do país do atleta
+    const pool = eligible.length
+      ? eligible
+      : PROMOTERS.filter(p => p.tier === 'national' && p.scope === nat);
+
+    // Ordena por prestígio e limita a 3 (ou 4 com agente bom)
+    const maxOffers = Math.min(3 + (agentBonus >= 0.14 ? 1 : 0), pool.length);
     this.contractOffers = pool
       .sort((a, b) => b.prestige - a.prestige)
-      .slice(0, Math.min(3 + (agentBonus >= 0.14 ? 1 : 0), pool.length))
+      .slice(0, maxOffers)
       .map(promoter => this._makeContractOffer(promoter, agentBonus));
     return this.contractOffers;
   }
