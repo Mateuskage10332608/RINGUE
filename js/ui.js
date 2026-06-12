@@ -117,7 +117,7 @@ class UI {
         <li>Transição Atleta → Academia com bônus de legado</li>
       </ul>
       <p style="color:#888; font-size:.82em; margin-top:16px">
-        RINGUE v1.0.0 — Primeiro lançamento público 🎉<br>
+        RINGUE v1.1.0 — P4P Rankings · Hall da Fama expandido · Correções de title fights 🎉<br>
         Modo Atleta completo · Modo Academia completo · Modo Federação em breve<br>
         <a href="https://github.com/Mateuskage10332608/RINGUE" style="color:#4a9eff">github.com/Mateuskage10332608/RINGUE</a>
       </p>
@@ -4826,7 +4826,7 @@ class UI {
             </div>
           ` : ''}
           <table class="ranking-table">
-            <tr><th>#</th><th>Lutador</th><th>Nac</th><th>Cartel</th><th>OVR</th><th>Estilo</th></tr>
+            <tr><th>#</th><th>Lutador</th><th>Nac</th><th>Cartel</th><th>OVR</th><th>Idade</th><th>Estilo</th></tr>
             ${fighters.map((f, i) => `
               <tr class="${f.id === p?.id ? 'player-row' : ''} ${f.isChampion ? 'champ-row' : ''}">
                 <td>${i + 1}</td>
@@ -4834,6 +4834,7 @@ class UI {
                 <td>${f.nationalityData?.flag || ''}</td>
                 <td>${f.record}</td>
                 <td>${f.overall}</td>
+                <td class="${f.age >= 35 ? 'muted' : ''}">${f.age || '?'}${f.age >= 35 ? ' ⚠️' : ''}</td>
                 <td>${f.style?.name || ''}</td>
               </tr>
             `).join('')}
@@ -4872,7 +4873,7 @@ class UI {
             <div class="muted" style="font-size:.8rem; padding:4px 0">Você não está no top-15 desta organização.</div>
           `}
           <table class="ranking-table">
-            <tr><th>#</th><th>Contendor</th><th>Nac</th><th>Cartel</th><th>OVR</th></tr>
+            <tr><th>#</th><th>Contendor</th><th>Nac</th><th>Cartel</th><th>OVR</th><th>Idade</th></tr>
             ${contenders.slice(0, 15).map((f, i) => `
               <tr class="${f.id === p?.id ? 'player-row' : ''}">
                 <td>${i + 1}${i === 0 ? ' 🎯' : ''}</td>
@@ -4880,6 +4881,39 @@ class UI {
                 <td>${f.nationalityData?.flag || ''}</td>
                 <td>${f.record}</td>
                 <td>${f.overall}</td>
+                <td class="${f.age >= 35 ? 'muted' : ''}">${f.age || '?'}${f.age >= 35 ? ' ⚠️' : ''}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </div>
+      `;
+    };
+
+    const renderP4P = () => {
+      const list = this.gs.p4pRankings || [];
+      const p = this.gs.player;
+      const playerEntry = list.find(e => e.fighter.id === p?.id);
+      return `
+        <div class="ranking-list">
+          <div class="org-rank-header" style="border-color:#c0a020">
+            <span style="font-size:1.5rem">⚖️</span>
+            <div>
+              <div style="font-weight:800; color:#c0a020">Pound for Pound</div>
+              <div class="muted" style="font-size:.78rem">Melhor lutador do mundo independente da categoria — todas as divisões, todos os estilos.</div>
+            </div>
+          </div>
+          ${playerEntry ? `<div class="org-rank-you" style="border-color:#c0a020">Você é o #${playerEntry.fighter.p4pRank} no P4P mundial</div>` : ''}
+          <table class="ranking-table">
+            <tr><th>#</th><th>Lutador</th><th>Nac</th><th>Divisão</th><th>Cartel</th><th>OVR</th><th>Idade</th></tr>
+            ${list.map(({ fighter: f }, i) => `
+              <tr class="${f.id === p?.id ? 'player-row' : ''} ${(f.belts || []).some(b => WORLD_ORGS.includes(b)) ? 'champ-row' : ''}">
+                <td>${i + 1}</td>
+                <td>${(f.belts || []).filter(b => WORLD_ORGS.includes(b)).map(b => getBeltInfo(b).icon).join('')} ${f.name}${f.id === p?.id ? ' ← VOCÊ' : ''}</td>
+                <td>${f.nationalityData?.flag || ''}</td>
+                <td>${WEIGHT_CLASSES.find(w => w.id === f.weightClass)?.name || f.weightClass}</td>
+                <td>${f.record}</td>
+                <td>${f.overall}</td>
+                <td class="${f.age >= 35 ? 'muted' : ''}">${f.age || '?'}${f.age >= 35 ? ' ⚠️' : ''}</td>
               </tr>
             `).join('')}
           </table>
@@ -4888,13 +4922,15 @@ class UI {
     };
 
     const renderContent = () =>
+      selectedOrg === 'p4p' ? renderP4P() :
       selectedOrg === 'unified' ? renderUnified(selectedWc) : renderOrg(selectedWc, selectedOrg);
 
     const orgMeta = { WBC: '#0B6623', WBA: '#0047AB', IBF: '#8B0000', WBO: '#6A0DAD' };
-    const orgTabs = ['unified', ...WORLD_ORGS].map(org => {
-      const color = org === 'unified' ? 'var(--muted)' : orgMeta[org];
+    const orgTabs = ['unified', ...WORLD_ORGS, 'p4p'].map(org => {
+      const color = org === 'unified' ? 'var(--muted)' : org === 'p4p' ? '#c0a020' : orgMeta[org];
+      const label = org === 'unified' ? '🌐 Geral' : org === 'p4p' ? '⚖️ P4P' : org;
       const isActive = org === selectedOrg;
-      return `<button class="org-tab ${isActive ? 'active' : ''}" data-org="${org}" style="${isActive ? `background:${color}20; border-color:${color}; color:${color}` : ''}">${org === 'unified' ? '🌐 Geral' : org}</button>`;
+      return `<button class="org-tab ${isActive ? 'active' : ''}" data-org="${org}" style="${isActive ? `background:${color}20; border-color:${color}; color:${color}` : ''}">${label}</button>`;
     }).join('');
 
     const wcTabs = wcs.map(wc =>
@@ -4915,6 +4951,8 @@ class UI {
 
     const rerender = () => {
       document.getElementById('ranking-content').innerHTML = renderContent();
+      const wcTabsEl = document.getElementById('wc-tabs');
+      if (wcTabsEl) wcTabsEl.style.display = selectedOrg === 'p4p' ? 'none' : '';
       // Re-bind mandatory challenger tooltip if needed
     };
 
@@ -4922,7 +4960,7 @@ class UI {
       tab.onclick = () => {
         selectedOrg = tab.dataset.org;
         document.querySelectorAll('.org-tab').forEach(t => { t.classList.remove('active'); t.removeAttribute('style'); });
-        const color = selectedOrg === 'unified' ? 'var(--muted)' : orgMeta[selectedOrg];
+        const color = selectedOrg === 'unified' ? 'var(--muted)' : selectedOrg === 'p4p' ? '#c0a020' : orgMeta[selectedOrg];
         tab.classList.add('active');
         tab.style.cssText = `background:${color}20; border-color:${color}; color:${color}`;
         rerender();

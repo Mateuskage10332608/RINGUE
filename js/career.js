@@ -32,6 +32,7 @@ class GameState {
     this.mediaHistory = []; // respostas, perguntas, encaradas e repercussões
     this.mediaCrisis = null;
     this.hallOfFame  = BOXING_LEGENDS.map(l => ({ ...l, inducted: true, inductedYear: l.era.split('–')[1] || '?' }));
+    this.p4pRankings = [];
   }
 
   get date() {
@@ -1361,6 +1362,14 @@ class GameState {
         this.orgRankings[org][wc.id] = { champion: champion || null, contenders };
       }
     }
+
+    // P4P: top 50 lutadores ativos de todas as divisões
+    this.p4pRankings = this._everyFighter()
+      .filter(f => !f.retiredAt && !f.isInjured)
+      .map(f => ({ fighter: f, score: this._p4pScore(f) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 50);
+    this.p4pRankings.forEach((entry, i) => { entry.fighter.p4pRank = i + 1; });
   }
 
   // Score ligeiramente diferente por organização — cada uma valoriza aspectos diferentes
@@ -1384,6 +1393,18 @@ class GameState {
     const pop     = f.popularity * 0.1;
     const divisionPenalty = f.isPlayer ? (f.divisionRankingPenalty || 0) : 0;
     return wins + losses + quality + recent + pop - divisionPenalty;
+  }
+
+  _p4pScore(f) {
+    const worldBelts = (f.belts || []).filter(b => WORLD_ORGS.includes(b)).length;
+    const archivedDef = Object.values(f.divisionDefenses || {}).reduce((t, d) => t + Object.values(d || {}).reduce((a, b) => a + b, 0), 0);
+    const totalDef = Object.values(f.beltDefenses || {}).reduce((a, b) => a + b, 0) + archivedDef;
+    return (f.overall || 60) * 0.5
+      + (f.wins || 0) * 0.4
+      + totalDef * 12
+      + worldBelts * 80
+      + (f.superBelts?.length || 0) * 60
+      + (f.unificationWins || 0) * 40;
   }
 
   // Retorna posição do jogador nos rankings de cada org (apenas onde é contendor, não campeão)
@@ -2476,11 +2497,29 @@ class GameState {
     const hasTrophy  = t  => (p.trophies || []).some(tr => tr.tier === t && tr.scope === nat);
 
     // Escada progressiva: cada tier exige ter conquistado o anterior
-    // World: 20+ vitórias, top 6, precisa ter cinturão continental
-    if (wins >= 20 && rank <= 6 && has(`continental:${cont}`)) {
-      const org = WORLD_ORGS.find(o => !has(o) && this.getTitleHolder(wc, o));
-      if (org) return org;
+
+    // World: verificado por org usando o ranking próprio de cada federação.
+    // Requisito base: top 5 na org + 15+ vitórias.
+    // Cinturão continental reduz para 12 vitórias.
+    // Rivalidade com o campeão (intensity >= 2) bypassa requisito de ranking.
+    for (const org of WORLD_ORGS) {
+      if (has(org)) continue;
+      const champion = this.getTitleHolder(wc, org);
+      if (!champion || champion.isInjured) continue;
+
+      const orgWc      = this.orgRankings[org]?.[wc];
+      const orgIdx     = orgWc?.contenders?.findIndex(f => f.id === p.id) ?? -1;
+      const orgRank    = orgIdx >= 0 ? orgIdx + 1 : 99;
+      const hasContBelt = has(`continental:${cont}`);
+      const winsReq    = hasContBelt ? 12 : 15;
+      const hasRivalry = (this.rivals || []).some(r => r.fighterId === champion.id && r.intensity >= 2);
+
+      const meetsRank = orgRank <= 5 || (rank <= 8 && wins >= 20);
+      if (wins >= winsReq && (meetsRank || hasRivalry)) {
+        return org;
+      }
     }
+
     // Continental: 14+ vitórias, top 10, precisa ter troféu nacional
     if (wins >= 14 && rank <= 10 && hasTrophy('national') && !has(`continental:${cont}`))
       return `continental:${cont}`;
@@ -2743,6 +2782,12 @@ class GameState {
       });
     }
     this.generateIncomingChallenge();
+    // Com 2+ cinturões mundiais, tenta gerar um segundo desafio na mesma semana
+    // (rola probabilidade independente, dá ao jogador opção de escolha)
+    const heldWorldBelts = (this.player?.belts || []).filter(b => WORLD_ORGS.includes(b));
+    if (heldWorldBelts.length >= 2 && this.incomingChallenges.length < 3) {
+      this.generateIncomingChallenge();
+    }
     this._generateWeeklyNews();
     this._generateCareerNarrative();
     this._maybeCreateMediaCrisis();
@@ -2783,6 +2828,7 @@ class GameState {
       if (Math.random() < ageRisk + wearRisk) {
         this._vacateFighterBelts(f);
         f.retiredAt = `${this.year}`;
+        this._checkHallOfFameInduction(f);
         this.addNews({
           headline: nl(`${f.name} anuncia aposentadoria do boxe profissional.`, `${f.name} announces retirement from professional boxing.`),
           type: 'retirement', fighters: [f],
@@ -2890,6 +2936,65 @@ class GameState {
     return { ok: true, reason };
   }
 
+  _generateHoFBio(fighter) {
+    const nat    = fighter.nationality || 'US';
+    const cont   = NAMES[nat]?.continent || 'americas';
+    const country = NAMES[nat]?.nation || nat;
+    const styleId = fighter.styleId || 'pressure';
+
+    const archivedDef = Object.values(fighter.divisionDefenses || {}).reduce((t, d) => t + Object.values(d || {}).reduce((a, b) => a + b, 0), 0);
+    const totalDef    = Object.values(fighter.beltDefenses || {}).reduce((a, b) => a + b, 0) + archivedDef;
+    const worldBelts  = ((fighter.titlesWon || []).filter(b => WORLD_ORGS.includes(b)));
+    const divs        = new Set((fighter.worldTitleHistory || []).map(e => e.weightClass)).size;
+    const kos         = (fighter.kos || 0) + (fighter.tkos || 0);
+    const koPct       = fighter.wins > 0 ? Math.round((kos / fighter.wins) * 100) : 0;
+
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    const parts = HOF_BIO_PARTS;
+
+    // Sentence 1: origins
+    const originPool = parts.origins[cont] || parts.origins.americas;
+    let bio = pick(originPool);
+
+    // Sentence 2: style
+    const stylePool = parts.style[styleId] || parts.style.pressure;
+    bio += ' ' + pick(stylePool);
+
+    // Sentence 3: peak achievement
+    let peakPool;
+    if (fighter.unificationWins >= 3 && worldBelts.length >= 4)   peakPool = parts.peak.undisputed;
+    else if (fighter.unificationWins >= 1)                         peakPool = parts.peak.unified;
+    else if (divs >= 2)                                            peakPool = parts.peak.multiDiv;
+    else if (totalDef >= 10)                                       peakPool = parts.peak.superBelt;
+    else if (koPct >= 65)                                          peakPool = parts.peak.ko_artist;
+    else if ((fighter.wins || 0) >= 30)                            peakPool = parts.peak.longevity;
+    else                                                           peakPool = parts.peak.champion;
+    bio += ' ' + pick(peakPool);
+
+    // Sentence 4: legacy (50% chance)
+    if (Math.random() < 0.5) bio += ' ' + pick(parts.legacy);
+
+    // Replace placeholders
+    const replacements = {
+      '{name}':        fighter.name,
+      '{nickname}':    fighter.nickname || fighter.name,
+      '{country}':     country,
+      '{wins}':        String(fighter.wins || 0),
+      '{losses}':      String(fighter.losses || 0),
+      '{draws}':       String(fighter.draws || 0),
+      '{kos}':         String(kos),
+      '{koPct}':       String(koPct),
+      '{titleDefs}':   String(totalDef),
+      '{divisions}':   String(divs),
+      '{era}':         `${fighter.careerStartYear || 2024}–${fighter.retiredAt || '?'}`,
+      '{weightClass}': WEIGHT_CLASSES.find(w => w.id === fighter.weightClass)?.name || fighter.weightClass,
+    };
+    for (const [key, val] of Object.entries(replacements)) {
+      bio = bio.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), val);
+    }
+    return bio;
+  }
+
   _checkHallOfFameInduction(fighter) {
     if (!fighter || !fighter.retiredAt) return;
     const archivedDef = Object.values(fighter.divisionDefenses || {}).reduce((t, d) => t + Object.values(d || {}).reduce((a, b) => a + b, 0), 0);
@@ -2921,7 +3026,7 @@ class GameState {
       weightClass:  fighter.weightClass,
       belts:        [...new Set([...(fighter.titlesWon || []), ...(fighter.belts || [])]).values()].filter(b => WORLD_ORGS.includes(b)),
       style:        fighter.styleId,
-      bio:          `${fighter.name} se aposentou em ${fighter.retiredAt} com um cartel de ${fighter.record} e ${totalDef} defesas de título.`,
+      bio:          this._generateHoFBio(fighter),
       goatScore,
       inducted:     true,
       inductedYear: fighter.retiredAt,
@@ -3363,6 +3468,18 @@ class GameState {
             reign.belt === tb && reign.weightClass === this.player.weightClass && !reign.endYear
           );
           if (activeReign) activeReign.defenses = this.player.beltDefenses[tb];
+        }
+      }
+      // Defesas dos cinturões adicionais em jogo (unificado: todos os beltStakes)
+      const extraBelts = (fight.beltStakes || []).filter(b => b !== tb && WORLD_ORGS.includes(b));
+      for (const eb of extraBelts) {
+        if (beltsBefore.includes(eb)) {
+          this.player.beltDefenses = this.player.beltDefenses || {};
+          this.player.beltDefenses[eb] = (this.player.beltDefenses[eb] || 0) + 1;
+          const activeReign = [...(this.player.titleReigns || [])].reverse().find(reign =>
+            reign.belt === eb && reign.weightClass === this.player.weightClass && !reign.endYear
+          );
+          if (activeReign) activeReign.defenses = this.player.beltDefenses[eb];
         }
       }
       if (WORLD_ORGS.includes(tb)) {
