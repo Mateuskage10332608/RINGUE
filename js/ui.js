@@ -117,7 +117,7 @@ class UI {
         <li>Transição Atleta → Academia com bônus de legado</li>
       </ul>
       <p style="color:#888; font-size:.82em; margin-top:16px">
-        RINGUE v1.1.0 — P4P Rankings · Hall da Fama expandido · Correções de title fights 🎉<br>
+        RINGUE v1.2.0 — Coletiva de imprensa visual · Entrevistas contextuais · Overhaul do treino 🎉<br>
         Modo Atleta completo · Modo Academia completo · Modo Federação em breve<br>
         <a href="https://github.com/Mateuskage10332608/RINGUE" style="color:#4a9eff">github.com/Mateuskage10332608/RINGUE</a>
       </p>
