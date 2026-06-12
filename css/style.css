@@ -1062,9 +1062,11 @@ label { display: block; color: var(--muted); font-size: .85rem; margin-bottom: 4
   font-size: .65rem; font-weight: 700; padding: 2px 7px; border-radius: 20px; white-space: nowrap;
   letter-spacing: .5px; text-transform: uppercase;
 }
-.badge-rivalry { background: #e6394622; color: #e63946; border: 1px solid #e6394655; }
-.badge-rematch { background: #9b59b622; color: #9b59b6; border: 1px solid #9b59b655; }
-.badge-unif    { background: #f4a26122; color: #f4a261; border: 1px solid #f4a26155; }
+.badge-rivalry   { background: #e6394622; color: #e63946; border: 1px solid #e6394655; }
+.badge-rematch   { background: #9b59b622; color: #9b59b6; border: 1px solid #9b59b655; }
+.badge-unif      { background: #f4a26122; color: #f4a261; border: 1px solid #f4a26155; }
+.badge-serial    { background: #e76f5122; color: #e76f51; border: 1px solid #e76f5155; }
+.badge-undefeated { background: #2ecc7122; color: #2ecc71; border: 1px solid #2ecc7155; }
 .presser-divider { height: 1px; background: var(--border); margin: 4px 0 16px; }
 
 /* ── Rivalidades ─────────────────────────────────────────── */

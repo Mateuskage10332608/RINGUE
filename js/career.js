@@ -3454,6 +3454,13 @@ class GameState {
       }
     }
 
+    // Track failed world title challenges (challenger lost)
+    if (fight?.titleBelt && WORLD_ORGS.includes(fight.titleBelt) &&
+        r && !r.isDraw && !r.isNoContest && r.loserFighter?.id === this.player.id &&
+        !beltsBefore.includes(fight.titleBelt)) {
+      this.player.failedTitleAttempts = (this.player.failedTitleAttempts || 0) + 1;
+    }
+
     // Continental and world title reign tracking
     if (fight?.titleBelt && r && !r.isDraw && !r.isNoContest && r.winnerFighter?.id === this.player.id) {
       const tb = fight.titleBelt;

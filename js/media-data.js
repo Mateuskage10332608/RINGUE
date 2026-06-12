@@ -1366,6 +1366,118 @@ const PRE_FIGHT_QUESTIONS = [
     ],
   },
 
+  // ── Segunda tentativa ──
+  {
+    id: 'pre_second_attempt_why',
+    contexts: ['second_attempt', 'world', 'continental'],
+    question: 'Você já esteve aqui antes e não conseguiu. O que te fez voltar em vez de desistir?',
+    answers: [
+      { id: 'a', tone: 'humble', text: 'Porque eu sei o que falhou. Não vim só repetir — vim corrigir.',
+        effects: { popularity: 4, reputation: 6, rivalIntensity: 1 },
+        flavor: 'A resposta foca e concisa. Toda a sala sente a determinação.' },
+      { id: 'b', tone: 'aggressive', text: 'Desistir? Esse cinturão nunca saiu da minha cabeça. Nunca vai.',
+        effects: { popularity: 6, reputation: 1, rivalIntensity: 2 },
+        flavor: 'A garra é palpável. Fãs nas redes já estão do lado dele.' },
+      { id: 'c', tone: 'diplomatic', text: 'Porque o boxe me ensinou que a segunda chance tem que ser merecida — e eu trabalhei para isso.',
+        effects: { popularity: 3, reputation: 5, rivalIntensity: 0 },
+        flavor: 'Resposta madura que ecoa além do boxe.' },
+    ],
+  },
+  {
+    id: 'pre_second_attempt_different',
+    contexts: ['second_attempt'],
+    question: 'Você tem acesso ao que deu errado na primeira tentativa. Como isso mudou sua preparação?',
+    answers: [
+      { id: 'a', tone: 'confident', text: 'Mudou tudo. O camp foi construído especificamente para resolver o que faltou.',
+        effects: { popularity: 5, reputation: 3, rivalIntensity: 1 },
+        flavor: 'Analistas querem os detalhes. A coletiva ganha ritmo.' },
+      { id: 'b', tone: 'humble', text: 'Assisti cada round dezenas de vezes. Cada erro virou item de treino.',
+        effects: { popularity: 3, reputation: 6, rivalIntensity: 0 },
+        flavor: 'O trabalho meticuloso impressiona treinadores presentes.' },
+    ],
+  },
+
+  // ── Desafiante serial (3ª, 4ª, 5ª+ tentativa) ──
+  {
+    id: 'pre_serial_obsession',
+    contexts: ['serial_challenger', 'world', 'continental'],
+    question: 'Você tentou mais de uma vez e ainda não conseguiu esse cinturão. Alguns diriam para aceitar o caminho. Por que você insiste?',
+    answers: [
+      { id: 'a', tone: 'aggressive', text: 'Porque ninguém que desistiu cedo virou lenda. Esse cinturão vai ser meu — cedo ou tarde.',
+        effects: { popularity: 8, reputation: -1, rivalIntensity: 2 },
+        flavor: 'Declaração ousada que domina as chamadas do evento.' },
+      { id: 'b', tone: 'humble', text: 'Porque todo campeão já foi um desafiante que não desistiu. Ainda estou nessa fase.',
+        effects: { popularity: 5, reputation: 6, rivalIntensity: 0 },
+        flavor: 'A resposta vira frase motivacional. Repercute muito além do boxe.' },
+      { id: 'c', tone: 'confident', text: 'Cada tentativa me fez melhor. Essa versão de mim não é o mesmo que falhou antes.',
+        effects: { popularity: 5, reputation: 4, rivalIntensity: 1 },
+        flavor: 'A evolução é real — analistas concordam.' },
+    ],
+  },
+  {
+    id: 'pre_serial_wear',
+    contexts: ['serial_challenger', 'world'],
+    question: 'Quantas derrotas nessa busca pelo título antes de você considerar que chegou longe o suficiente?',
+    answers: [
+      { id: 'a', tone: 'aggressive', text: 'Essa pergunta não entra na minha cabeça. Enquanto o corpo aguentar, eu sou desafiante.',
+        effects: { popularity: 7, reputation: 0, rivalIntensity: 1 },
+        flavor: 'Resposta visceral. A sala reage com impacto.' },
+      { id: 'b', tone: 'diplomatic', text: 'Essa é uma conversa que tenho com meu time e comigo mesmo — não com as câmeras.',
+        effects: { popularity: 2, reputation: 4, rivalIntensity: 0 },
+        flavor: 'Resposta que fecha a pergunta com classe.' },
+      { id: 'c', tone: 'humble', text: 'Não tenho resposta para isso. Sei que o boxe vai me dizer quando for a hora.',
+        effects: { popularity: 4, reputation: 5, rivalIntensity: 0 },
+        flavor: 'A honestidade para. Um dos jornalistas pausa de escrever.' },
+    ],
+  },
+  {
+    id: 'pre_serial_credibility',
+    contexts: ['serial_challenger'],
+    question: 'Há quem diga que sua chance passou. Como você responde a isso?',
+    answers: [
+      { id: 'a', tone: 'aggressive', text: 'Estou aqui sentado numa coletiva de título. Que eles venham me dizer isso pessoalmente.',
+        effects: { popularity: 8, reputation: -2, rivalIntensity: 2 },
+        flavor: 'Risos na sala — com ele ou contra ele. A resposta vai circular.' },
+      { id: 'b', tone: 'confident', text: 'Deixo que as ações respondam. Não perco energia com narrativa.',
+        effects: { popularity: 4, reputation: 4, rivalIntensity: 0 },
+        flavor: 'Frieza calculada. Mais impactante do que qualquer explosão.' },
+      { id: 'c', tone: 'humble', text: 'Talvez tenham razão sobre o passado. Mas o boxe acontece no presente.',
+        effects: { popularity: 5, reputation: 5, rivalIntensity: 0 },
+        flavor: 'A resposta desativa o ataque com elegância. Jornalistas aplaudem mentalmente.' },
+    ],
+  },
+
+  // ── Invicto desafiando ──
+  {
+    id: 'pre_undefeated_chal',
+    contexts: ['undefeated_challenger', 'world', 'continental'],
+    question: 'Você chega invicto a essa luta. É a maior prova de que o recorde perfeito tem validade?',
+    answers: [
+      { id: 'a', tone: 'confident', text: 'Sempre soube que o dia do título chegaria antes de qualquer derrota. Esse dia é hoje.',
+        effects: { popularity: 6, reputation: 2, rivalIntensity: 2 },
+        flavor: 'Confiança máxima. O campeão enrijece na cadeira ao ouvir.' },
+      { id: 'b', tone: 'humble', text: 'O recorde não ganha cinturões. O que conta é o que eu faço quando o sino tocar.',
+        effects: { popularity: 4, reputation: 5, rivalIntensity: 0 },
+        flavor: 'O foco é total. A resposta desarma qualquer provocação.' },
+      { id: 'c', tone: 'aggressive', text: 'Esse recorde foi construído para noites assim. Não vou deixar ele morrer aqui.',
+        effects: { popularity: 7, reputation: -1, rivalIntensity: 2 },
+        flavor: 'A pressão que ele coloca sobre si mesmo é enorme — e calculada.' },
+    ],
+  },
+  {
+    id: 'pre_undefeated_burden',
+    contexts: ['undefeated_challenger'],
+    question: 'Todo invicto carrega um alvo nas costas. Essa pressão interfere no seu foco?',
+    answers: [
+      { id: 'a', tone: 'confident', text: 'O alvo é combustível. Significa que estou fazendo algo certo.',
+        effects: { popularity: 5, reputation: 3, rivalIntensity: 1 },
+        flavor: 'Resposta limpa. Transforma pressão em força.' },
+      { id: 'b', tone: 'diplomatic', text: 'Aprendi a não carregar o recorde para o ringue. Cada luta começa do zero na minha cabeça.',
+        effects: { popularity: 3, reputation: 5, rivalIntensity: 0 },
+        flavor: 'A maturidade mental impressiona os presentes.' },
+    ],
+  },
+
   // ── Revanche ──
   {
     id: 'pre_rematch_diff',
@@ -1391,12 +1503,44 @@ const PRE_FIGHT_QUESTIONS = [
       { id: 'a', tone: 'humble', text: 'A cabeça. Entrei ansioso demais e perdi os primeiros rounds sendo quem eu não sou.',
         effects: { popularity: 3, reputation: 5, rivalIntensity: 0 },
         flavor: 'A autocrítica impressiona até os mais céticos.' },
-      { id: 'b', tone: 'diplomatic', text: 'O timing do meu jogo de pés no médio do combate. Deixei espaços demais.',
+      { id: 'b', tone: 'diplomatic', text: 'O timing do meu jogo de pés no meio do combate. Deixei espaços demais.',
         effects: { popularity: 2, reputation: 4, rivalIntensity: 0 },
         flavor: 'Análise técnica. Treinadores na sala balançam a cabeça aprovando.' },
       { id: 'c', tone: 'aggressive', text: 'Teria acabado mais cedo. Fui condescendente, e ele sobreviveu por isso.',
         effects: { popularity: 5, reputation: -1, rivalIntensity: 3 },
         flavor: 'O adversário não gostou. A coletiva esquenta.' },
+    ],
+  },
+  {
+    id: 'pre_rematch_mind',
+    contexts: ['rematch'],
+    question: 'Rever os rounds da primeira luta foi difícil mentalmente? Ou foi apenas análise técnica?',
+    answers: [
+      { id: 'a', tone: 'humble', text: 'Difícil. Você se vê falhando em câmera lenta. Mas era necessário.',
+        effects: { popularity: 4, reputation: 5, rivalIntensity: 0 },
+        flavor: 'A honestidade sobre a dor do processo comove a sala.' },
+      { id: 'b', tone: 'confident', text: 'Tratei como análise. Emoção não ajuda no camp — resultado ajuda.',
+        effects: { popularity: 3, reputation: 4, rivalIntensity: 0 },
+        flavor: 'A frieza profissional impressiona os analistas.' },
+      { id: 'c', tone: 'aggressive', text: 'Cada round que assisti aumentou minha fome. Não foi doloroso — foi combustível.',
+        effects: { popularity: 6, reputation: 0, rivalIntensity: 2 },
+        flavor: 'A reviravolta mental é convincente. Jornalistas anotam a citação.' },
+    ],
+  },
+  {
+    id: 'pre_rematch_opponent_evolved',
+    contexts: ['rematch', 'world', 'continental'],
+    question: 'Seu adversário também estudou vocês dois. Você está preparado para encontrar alguém diferente?',
+    answers: [
+      { id: 'a', tone: 'confident', text: 'Estou preparado para qualquer versão dele. Meu prep foi mais fundo do que nunca.',
+        effects: { popularity: 4, reputation: 3, rivalIntensity: 1 },
+        flavor: 'Confiança sem arrogância. A resposta equilibrada agrada.' },
+      { id: 'b', tone: 'diplomatic', text: 'Essa é a beleza da revanche — as duas partes evoluíram. Vai ser uma luta diferente.',
+        effects: { popularity: 2, reputation: 5, rivalIntensity: 0 },
+        flavor: 'Resposta que eleva o evento. A promotora gosta.' },
+      { id: 'c', tone: 'aggressive', text: 'Não importa o que ele preparou. Meu plano foi feito para destruir o que ele tem de melhor.',
+        effects: { popularity: 6, reputation: -1, rivalIntensity: 3 },
+        flavor: 'Declaração audaciosa. O adversário reage imediatamente.' },
     ],
   },
 ];
@@ -2026,13 +2170,17 @@ function pickPreFightQuestions(ctx, usedIds = []) {
   const scope = typeof ctx === 'string' ? ctx : (ctx.scope || 'national');
   const activeCtxs = [scope];
   if (typeof ctx === 'object') {
-    if (ctx.isChampion)    activeCtxs.push('champion_defense');
-    if (ctx.isChallenger)  activeCtxs.push('challenger');
-    if (ctx.hasRivalry)    activeCtxs.push('rivalry');
-    if (ctx.isUnification) activeCtxs.push('unification');
-    if (ctx.isRematch)     activeCtxs.push('rematch');
+    if (ctx.isChampion)            activeCtxs.push('champion_defense');
+    if (ctx.isChallenger)          activeCtxs.push('challenger');
+    if (ctx.hasRivalry)            activeCtxs.push('rivalry');
+    if (ctx.isUnification)         activeCtxs.push('unification');
+    if (ctx.isRematch)             activeCtxs.push('rematch');
+    if (ctx.isSerialChallenger)    activeCtxs.push('serial_challenger');
+    if (ctx.isSecondAttempt)       activeCtxs.push('second_attempt');
+    if (ctx.isUndefeatedChallenger) activeCtxs.push('undefeated_challenger');
   }
-  const specificTags = ['champion_defense', 'challenger', 'rivalry', 'unification', 'rematch'];
+  const specificTags = ['champion_defense', 'challenger', 'rivalry', 'unification', 'rematch',
+                        'serial_challenger', 'second_attempt', 'undefeated_challenger'];
   const matchScore = q => q.contexts.filter(c => specificTags.includes(c) && activeCtxs.includes(c)).length;
   const matches    = q => q.contexts.some(c => activeCtxs.includes(c));
 

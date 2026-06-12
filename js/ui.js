@@ -3963,13 +3963,19 @@ class UI {
         const p2   = this.gs.player;
         const opp2 = fight.opponent;
         const worldOrgs = ['WBC','WBA','IBF','WBO'];
+        const isChallenger2   = !!(fight.titleBelt && !(p2.belts || []).includes(fight.titleBelt));
+        const challengeAttempt = isChallenger2 ? ((p2.failedTitleAttempts || 0) + 1) : 0;
         const presserCtx = {
-          scope:         mediaScope,
-          isChampion:    (p2.belts || []).some(b => worldOrgs.includes(b)),
-          isChallenger:  !!(fight.titleBelt && !(p2.belts || []).includes(fight.titleBelt)),
-          hasRivalry:    (this.gs.rivals || []).some(r => r.fighterId === opp2.id && r.intensity >= 2),
-          isUnification: ((fight.beltStakes || []).filter(b => worldOrgs.includes(b)).length >= 2),
-          isRematch:     (p2.fightHistory || []).some(h => h.opponentId === opp2.id),
+          scope:                 mediaScope,
+          isChampion:            (p2.belts || []).some(b => worldOrgs.includes(b)),
+          isChallenger:          isChallenger2,
+          hasRivalry:            (this.gs.rivals || []).some(r => r.fighterId === opp2.id && r.intensity >= 2),
+          isUnification:         ((fight.beltStakes || []).filter(b => worldOrgs.includes(b)).length >= 2),
+          isRematch:             (p2.fightHistory || []).some(h => h.opponent?.id === opp2.id),
+          challengeAttempt,
+          isSerialChallenger:    challengeAttempt >= 3,
+          isSecondAttempt:       challengeAttempt === 2,
+          isUndefeatedChallenger: isChallenger2 && (p2.losses || 0) === 0,
         };
         const questions = pickPreFightQuestions(presserCtx, this.gs.getUsedInterviewQuestionIds());
         this.show('preFightInterview', { questions, fight, mediaScope, presserCtx });
@@ -4432,9 +4438,12 @@ class UI {
 
     // Context badges
     const badges = [];
-    if (presserCtx.isRematch)     badges.push('<span class="presser-badge badge-rematch">🔄 REVANCHE</span>');
-    if (presserCtx.hasRivalry)    badges.push('<span class="presser-badge badge-rivalry">🔥 RIVALIDADE</span>');
-    if (presserCtx.isUnification) badges.push('<span class="presser-badge badge-unif">👑 UNIFICAÇÃO</span>');
+    if (presserCtx.isRematch)            badges.push('<span class="presser-badge badge-rematch">🔄 REVANCHE</span>');
+    if (presserCtx.hasRivalry)           badges.push('<span class="presser-badge badge-rivalry">🔥 RIVALIDADE</span>');
+    if (presserCtx.isUnification)        badges.push('<span class="presser-badge badge-unif">👑 UNIFICAÇÃO</span>');
+    if (presserCtx.isSerialChallenger)   badges.push(`<span class="presser-badge badge-serial">${presserCtx.challengeAttempt}ª TENTATIVA</span>`);
+    else if (presserCtx.isSecondAttempt) badges.push('<span class="presser-badge badge-serial">2ª TENTATIVA</span>');
+    if (presserCtx.isUndefeatedChallenger) badges.push('<span class="presser-badge badge-undefeated">🛡️ INVICTO</span>');
 
     // Fight title line
     const beltLabel = fight.titleBelt ? `— ${fight.titleBelt.toUpperCase()} ${p.weightClassData?.name?.toUpperCase() || ''}` : '';
