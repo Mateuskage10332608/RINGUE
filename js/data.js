@@ -2032,6 +2032,122 @@ const ACADEMY_BUILDER_LEVELS = [
   },
 ];
 
+// Item flavor descriptions — used in the interior top-down view
+const ITEM_FLAVOR = {
+  // ── Nível 1 — Garagem ───────────────────────────────────────
+  basic_ring:       { room:'ring',     flavor: 'Ring improvisado com cordas gastas e chão de madeira velha. Não é dos melhores, mas já treinou gente boa.' },
+  heavy_bag:        { room:'training', flavor: 'Saco pesado cheio de areia. Batido por gerações, ainda aguenta muita porrada.' },
+  mirror:           { room:'training', flavor: 'Parece simples, mas treinar na frente do espelho transforma a técnica. Não tem como mentir para si mesmo.' },
+  jump_rope:        { room:'training', flavor: 'Cardio fundamental. Cada round de corda é um round a mais no tanque.' },
+  locker:           { room:'comfort',  flavor: 'Armários simples, mas todo atleta precisa de um lugar para guardar o equipamento com segurança.' },
+  first_aid:        { room:'medical',  flavor: 'Curativos, gelo e o básico para os primeiros socorros. Previne mais do que trata.' },
+  radio:            { room:'comfort',  flavor: 'Um som ambiente levanta o ânimo do treino. Às vezes é o que faz a diferença em um dia pesado.' },
+  timer:            { room:'training', flavor: 'Timer digital que marca os rounds com apito. A disciplina começa na contagem regressiva.' },
+  mat:              { room:'training', flavor: 'Tatame para trabalho no chão e condicionamento. Amortece as quedas — e as dores.' },
+  speed_bag:        { room:'training', flavor: 'Saco de velocidade para reflexo e coordenação. O ritmo fala por si. Tá, tá, tá, tá.' },
+  watercooler:      { room:'comfort',  flavor: 'Hidratação é treino também. Sempre gelado, sempre disponível.' },
+  basic_weights:    { room:'training', flavor: 'Set de halteres que já viram muito suor. Básico e funcional — força não precisa de luxo para crescer.' },
+  glove_rack:       { room:'comfort',  flavor: 'Rack para organizar equipamentos. Ginásio arrumado é mente focada.' },
+  sign:             { room:'prestige', flavor: 'Placa na frente da academia. Simples, direta. A primeira impressão do seu trabalho.' },
+  camera_basic:     { room:'media',    flavor: 'Câmera de treino que grava rounds para análise. O vídeo não mente — e o erro não tem onde se esconder.' },
+
+  // ── Nível 2 — Academia Local ─────────────────────────────────
+  pro_ring:         { room:'ring',     flavor: 'Ring profissional com lonas novas e medidas regulamentares. Sparrings de qualidade exigem isso.' },
+  weight_room:      { room:'training', flavor: 'Sala de musculação completa. Força é a base de tudo no boxe — aqui ela é levada a sério.' },
+  showers:          { room:'comfort',  flavor: 'Vestiário com chuveiros quentes. O mínimo que um atleta merece depois de horas de suor.' },
+  cardio_area:      { room:'training', flavor: 'Área dedicada ao cardio: esteiras, bicicletas e elípticos. Quem não tem gás não tem luta.' },
+  mini_office:      { room:'admin',    flavor: 'Escritório pequeno, mas suficiente para contratos, planejamento e uma boa xícara de café.' },
+  video_basic:      { room:'media',    flavor: 'Sala de vídeo básica para assistir adversários. Cada detalhe assistido aqui vale pontos lá dentro.' },
+  clinic_basic:     { room:'medical',  flavor: 'Enfermaria equipada para atender lesões menores sem sair da academia. Tempo é carreira.' },
+  stretch_area:     { room:'training', flavor: 'Área de alongamento e mobilidade. Previne lesões antes que apareçam — o atleta que não alonga paga o preço.' },
+  nutrition_fridge: { room:'comfort',  flavor: 'Frigobar com suplementos e refeições pré-treino. Nutrição é metade da batalha dentro do ringue.' },
+  lit_sign:         { room:'prestige', flavor: 'Placa iluminada que brilha à noite. A academia virou referência no bairro.' },
+  parking:          { room:'comfort',  flavor: 'Estacionamento próprio. Detalhe pequeno que faz diferença para atletas que vêm de longe.' },
+  second_ring:      { room:'ring',     flavor: 'Segundo ring permite dois grupos treinando ao mesmo tempo. A academia cresceu de verdade.' },
+  meeting_room:     { room:'admin',    flavor: 'Sala de reunião para negociar contratos e receber patrocinadores. Aqui as lutas começam antes do ringue.' },
+  ac:               { room:'comfort',  flavor: 'Ar condicionado para treinar no calor sem perder ritmo. O clima não vai mais ser desculpa.' },
+  security:         { room:'admin',    flavor: 'Sistema de segurança com câmeras e alarme. Os equipamentos estão protegidos — e os atletas também.' },
+
+  // ── Nível 3 — Centro de Treinamento ─────────────────────────
+  olympic_ring:     { room:'ring',     flavor: 'Ring com especificações olímpicas. Qualidade que atletas internacionais reconhecem ao entrar.' },
+  sauna:            { room:'medical',  flavor: 'Sauna finlandesa para recuperação muscular e corte de peso controlado. Purifica corpo e mente.' },
+  pro_clinic:       { room:'medical',  flavor: 'Clínica esportiva com médico e fisioterapeuta residentes. Lesão tratada é carreira preservada.' },
+  film_room:        { room:'media',    flavor: 'Film room com tela grande e software de análise tática. O adversário não tem mais segredos.' },
+  dorms:            { room:'comfort',  flavor: 'Dormitórios para atletas de fora. Quem mora aqui vive o boxe 24 horas por dia.' },
+  cafeteria:        { room:'comfort',  flavor: 'Cantina com nutrição supervisionada. A dieta começa na mesa, não no treino.' },
+  pool:             { room:'training', flavor: 'Piscina para treino de resistência sem impacto. Recovery de elite para atletas de elite.' },
+  sponsor_wall:     { room:'prestige', flavor: 'Parede de patrocinadores na entrada. Quem financia a academia merece visibilidade — e eles sabem disso.' },
+  press_room:       { room:'media',    flavor: 'Sala de imprensa para coletivas e entrevistas. A academia virou pauta nos jornais esportivos.' },
+  trophy_room:      { room:'prestige', flavor: 'Sala de troféus dedicada. Cada conquista dos atletas tem seu lugar aqui. Os prospectos entram e sonham.' },
+  third_ring:       { room:'ring',     flavor: 'Três rings: uma academia de verdade. Grupos separados por nível, sem interrupção.' },
+  physio_suite:     { room:'medical',  flavor: 'Suite de fisioterapia com equipamentos modernos. Recuperação que acelera o retorno ao treinamento.' },
+  pro_weights:      { room:'training', flavor: 'Musculação profissional com plataformas e rack olímpico. Força de atleta de alto nível, tratada como tal.' },
+  coaches_room:     { room:'admin',    flavor: 'Sala dos treinadores com mesa tática e biblioteca de vídeos. O melhor staff precisa do melhor espaço.' },
+  brand_sign:       { room:'prestige', flavor: 'Fachada profissional com identidade visual. A academia virou uma marca reconhecida.' },
+
+  // ── Nível 4 — Complexo Esportivo ─────────────────────────────
+  arena_ring:       { room:'ring',     flavor: 'Ring de arena com iluminação profissional e câmeras embutidas. Você pode usar aqui para pequenos eventos.' },
+  hypoxic_chamber:  { room:'training', flavor: 'Câmara hipóxica que simula altitude de 3.000 metros. Resistência que vai além do que o ar normal permite.' },
+  recovery_suite:   { room:'medical',  flavor: 'Suite de recuperação completa com crioterapia, pressoterapia e imersão. Recuperação de campeão mundial.' },
+  hot_cold_pool:    { room:'medical',  flavor: 'Contraste quente/frio: o protocolo de recuperação mais eficiente do esporte. Os atletas odeiam e amam ao mesmo tempo.' },
+  broadcast_studio: { room:'media',    flavor: 'Estúdio de broadcast para transmissões ao vivo dos treinos. A academia é mídia. Prospectos assistem de casa.' },
+  vip_lounge:       { room:'admin',    flavor: 'Lounge VIP para receber patrocinadores premium e figuras do mundo do boxe. Negócios fechados com whisky premium.' },
+  hotel_wing:       { room:'comfort',  flavor: 'Ala hotel para atletas em preparação intensiva. Viver a luta, literalmente, 24 horas aqui.' },
+  nutrition_lab:    { room:'training', flavor: 'Laboratório nutricional com análises personalizadas. Cada atleta tem seu plano — sem margem para erro.' },
+  strength_lab:     { room:'training', flavor: 'Lab de força com sensores e análise biomecânica. Ciência aplicada ao boxe. Os números não mentem.' },
+  combat_sim:       { room:'training', flavor: 'Simulador de combate com IA que imita estilos de adversários reais. O futuro do treinamento, agora.' },
+  fan_shop:         { room:'prestige', flavor: 'Loja da academia com camisetas e equipamentos. Os fãs vestem a marca. A academia virou ídolo.' },
+  conference_hall:  { room:'admin',    flavor: 'Salão de conferências para grandes anúncios de lutas e eventos. A mídia internacional cobre daqui.' },
+  helipad:          { room:'prestige', flavor: 'Heliporto. Atletas internacionais chegam direto. O mundo inteiro presta atenção nessa academia.' },
+  outdoor_ring:     { room:'ring',     flavor: 'Ring externo coberto para treinos ao ar livre. Quando o sol racha, o treinamento continua.' },
+  elite_sign:       { room:'prestige', flavor: 'Letreiro de elite com iluminação LED personalizada. Você chegou lá. Todo mundo sabe.' },
+
+  // ── Nível 5 — Academia de Elite ─────────────────────────────
+  world_ring:       { room:'ring',     flavor: 'Ring com as mesmas especificações usadas em campeonatos mundiais. Treinar aqui é treinar para o topo.' },
+  cryotherapy:      { room:'medical',  flavor: 'Crioterapia de corpo inteiro a −120°C. Recuperação que reduz a inflamação em horas, não dias.' },
+  sports_science:   { room:'training', flavor: 'Departamento completo de ciência do esporte. Biomecânica, fisiologia, psicologia — tudo integrado.' },
+  mental_perf:      { room:'medical',  flavor: 'Centro de performance mental com psicólogos esportivos. A cabeça também precisa de treino.' },
+  media_center:     { room:'media',    flavor: 'Media center de nível mundial com estúdios de gravação e edição. A academia produz seu próprio conteúdo.' },
+  world_class_gym:  { room:'training', flavor: 'Ginásio world-class onde os melhores do mundo pedem para treinar. Você que deixa — ou não.' },
+  private_clinic:   { room:'medical',  flavor: 'Clínica privada exclusiva para os atletas da academia. Zero fila, zero espera, máximo cuidado.' },
+  athlete_village:  { room:'comfort',  flavor: 'Vila dos atletas com casas, jardins e área de lazer. Uma comunidade construída em torno do boxe.' },
+  global_scouts:    { room:'admin',    flavor: 'Rede global de scouts em todos os continentes. O próximo campeão pode estar em qualquer país.' },
+  luxury_sponsor:   { room:'admin',    flavor: 'Espaço de patrocínio luxury com naming rights e exposição premium. As marcas disputam uma vaga aqui.' },
+  hall_of_fame:     { room:'prestige', flavor: 'Hall da Fama da academia com busts, fotos e memorabilia. Os melhores da história estão aqui para sempre.' },
+  boxing_school:    { room:'admin',    flavor: 'Escola de boxe com currículo estruturado e certificação. Forma técnicos e atletas com método.' },
+  indoor_arena:     { room:'ring',     flavor: 'Arena indoor com 5.000 lugares para eventos próprios. A academia recebe lutas de nível mundial.' },
+  documentary:      { room:'media',    flavor: 'Estúdio documentário que conta a história dos atletas da casa. Legados gravados para sempre.' },
+  iconic_facade:    { room:'prestige', flavor: 'Fachada icônica reconhecida mundialmente. Um ponto turístico da cidade. Uma lenda de tijolo e concreto.' },
+
+  // ── Nível 6 — Lenda do Boxe ──────────────────────────────────
+  olympic_facility: { room:'training', flavor: 'Instalação com padrão olímpico oficial. Governos pedem para usar no período pré-Olimpíadas.' },
+  world_arena:      { room:'ring',     flavor: 'Arena mundial com 20.000 lugares. As maiores lutas do planeta acontecem aqui.' },
+  bio_lab:          { room:'medical',  flavor: 'Laboratório bio-médico de pesquisa avançada. Publica estudos científicos. O esporte aprende aqui.' },
+  ai_training:      { room:'training', flavor: 'Sistema de treino com inteligência artificial que aprende e se adapta a cada atleta. Décadas à frente.' },
+  titan_ring:       { room:'ring',     flavor: 'Ring dos Titãs — o lugar onde campeões mundiais escolhem treinar quando estão na cidade.' },
+  world_media:      { room:'media',    flavor: 'Hub de mídia mundial que transmite para 180 países. A academia é a produtora dos maiores eventos.' },
+  museum:           { room:'prestige', flavor: 'Museu do Boxe com acervo histórico e interativo. Turistas do mundo inteiro visitam. Uma instituição.' },
+  charity_wing:     { room:'comfort',  flavor: 'Ala de caridade para jovens de comunidades carentes. O boxe como ferramenta de transformação social.' },
+  legend_hotel:     { room:'comfort',  flavor: 'Hotel Lenda com 100 suítes. Visitantes de todas as partes do mundo ficam aqui para eventos.' },
+  global_broadcast: { room:'media',    flavor: 'Rede de broadcast global com parceiros em todos os continentes. Cada luta aqui é evento mundial.' },
+  goat_clinic:      { room:'medical',  flavor: 'Instituto Médico GOAT com a mais avançada pesquisa em medicina esportiva do mundo.' },
+  infinity_pool:    { room:'comfort',  flavor: 'Piscina infinita com vista panorâmica. Recovery com vista para a cidade. Merecido.' },
+  power_plant:      { room:'admin',    flavor: 'Planta de energia própria com painéis solares e baterias. A academia é autossuficiente.' },
+  monument:         { room:'prestige', flavor: 'Monumento da academia na praça de entrada. Estátuas, história e um legado de gerações.' },
+  legend_sign:      { room:'prestige', flavor: 'Fachada lendária visível de quilômetros de distância. Uma estrela no mapa do boxe mundial.' },
+};
+
+// Room layout for interior top-down view
+const INTERIOR_ROOMS = [
+  { id: 'ring',     label: 'Ringues',       icon: '🟥', color: '#1a0a0a', border: '#8b0000', cols: 3 },
+  { id: 'training', label: 'Área de Treino',icon: '💪', color: '#0a1008', border: '#2d6a1e', cols: 4 },
+  { id: 'medical',  label: 'Medicina',      icon: '⚕️',  color: '#080c18', border: '#1a3a6a', cols: 3 },
+  { id: 'media',    label: 'Mídia & Vídeo', icon: '📺', color: '#100818', border: '#5a1a7a', cols: 3 },
+  { id: 'prestige', label: 'Troféus & Fama',icon: '🏆', color: '#100c00', border: '#7a5a00', cols: 3 },
+  { id: 'admin',    label: 'Administração', icon: '📊', color: '#0a0c10', border: '#2a3a5a', cols: 3 },
+  { id: 'comfort',  label: 'Vestiário & Conforto', icon: '🚿', color: '#0a0a10', border: '#3a3a5a', cols: 4 },
+];
+
 // Academy sponsor catalog
 // tier: 1=local, 2=regional, 3=nacional, 4=premium
 // category: equipment, nutrition, apparel, media, betting, finance

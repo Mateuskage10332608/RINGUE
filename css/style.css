@@ -1058,6 +1058,7 @@ label { display: block; color: var(--muted); font-size: .85rem; margin-bottom: 4
   font-size: 1.1rem; font-weight: 900; color: var(--text2); letter-spacing: 1px;
 }
 .presser-badges { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.presser-badges-bar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 6px 12px 2px; }
 .presser-badge {
   font-size: .65rem; font-weight: 700; padding: 2px 7px; border-radius: 20px; white-space: nowrap;
   letter-spacing: .5px; text-transform: uppercase;
@@ -1847,3 +1848,92 @@ label { display: block; color: var(--muted); font-size: .85rem; margin-bottom: 4
   .recruit-grid { grid-template-columns: 1fr; }
   .roster-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Builder View Toggle ─────────────────────────────────── */
+.builder-view-toggle { display: flex; gap: 6px; margin-bottom: 12px; }
+.bvt-btn {
+  padding: 6px 18px; border: 1px solid var(--academy-line); background: transparent;
+  color: var(--text2); font: 600 .78rem 'Segoe UI', sans-serif; cursor: pointer;
+  border-radius: 4px; letter-spacing: .04em; transition: all .15s;
+}
+.bvt-btn:hover { border-color: var(--academy-green); color: var(--academy-green); }
+.bvt-btn.bvt-active { background: var(--academy-green); border-color: var(--academy-green); color: #fff; }
+
+/* ── Interior Top-Down View ──────────────────────────────── */
+.builder-interior-panel { }
+.interior-floor { display: flex; flex-direction: column; gap: 10px; }
+.interior-room {
+  border: 1px solid #333; border-radius: 6px; padding: 10px 12px;
+}
+.interior-room-legacy { border-width: 1.5px; }
+.interior-room-label {
+  font: 700 .72rem 'Segoe UI', sans-serif; letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(255,255,255,.55); margin-bottom: 8px;
+}
+.interior-room-items { display: flex; flex-wrap: wrap; gap: 8px; }
+.interior-item-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 8px 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 5px;
+  cursor: pointer; min-width: 76px; max-width: 100px; text-align: center;
+  background: rgba(255,255,255,.04); transition: all .15s;
+}
+.interior-item-tile:hover { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.3); transform: translateY(-2px); }
+.interior-tile-icon { font-size: 1.5rem; line-height: 1; }
+.interior-tile-name { font-size: .65rem; color: rgba(255,255,255,.7); line-height: 1.2; word-break: break-word; }
+.interior-hint { font-size: .7rem; color: rgba(255,255,255,.3); text-align: center; padding: 4px 0; }
+.interior-empty { text-align: center; color: var(--text2); padding: 32px; font-size: .88rem; line-height: 1.6; }
+
+/* ── Interior Item Detail Modal ──────────────────────────── */
+.interior-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.72);
+  display: flex; align-items: center; justify-content: center; z-index: 9999;
+}
+.interior-modal {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 24px 28px; max-width: 340px; width: 90%; display: flex; flex-direction: column;
+  align-items: center; text-align: center; gap: 8px;
+}
+.interior-modal-icon { font-size: 2.8rem; }
+.interior-modal-name { font: 700 1.05rem 'Segoe UI', sans-serif; color: var(--text); }
+.interior-modal-flavor { font-size: .88rem; color: var(--text2); line-height: 1.55; }
+.interior-modal-effect { font-size: .78rem; color: #7ecfb0; letter-spacing: .04em; }
+.interior-modal-close {
+  margin-top: 12px; padding: 8px 20px; background: transparent; border: 1px solid var(--border);
+  color: #ccc; cursor: pointer; border-radius: 4px; font-size: .8rem;
+}
+.interior-modal-close:hover { border-color: #fff; color: #fff; }
+
+/* ── Academy Hall of Fame ────────────────────────────────── */
+.hof-header { margin-bottom: 24px; }
+.hof-title { font: 700 1.4rem 'Segoe UI', sans-serif; color: var(--text); margin: 0; }
+.hof-subtitle { font-size: .82rem; color: #aaa; margin: 4px 0 0; }
+.hof-section { margin-bottom: 32px; }
+.hof-section-title { font: 700 .85rem 'Segoe UI', sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #7ecfb0; margin-bottom: 2px; }
+.hof-section-sub { font-size: .75rem; color: #aaa; margin-bottom: 14px; }
+.hof-belt-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.hof-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+  transition: box-shadow .15s;
+}
+.hof-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+.hof-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.hof-flag { font-size: 1.3rem; }
+.hof-card-info { flex: 1; }
+.hof-fighter-name { display: block; font: 700 .92rem 'Segoe UI', sans-serif; color: #f0f0f0; }
+.hof-record { font-size: .75rem; color: #aaa; }
+.hof-star-badge { background: #2a1f00; color: #ffd700; border: 1px solid #ffd70055; font-size: .62rem; font-weight: 700; padding: 2px 6px; border-radius: 10px; white-space: nowrap; }
+.hof-legacy-badge { background: rgba(255,255,255,.06); color: var(--text2); border: 1px solid var(--border); font-size: .62rem; font-weight: 600; padding: 2px 6px; border-radius: 10px; white-space: nowrap; }
+.hof-belts { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.hof-belt-chip { font-size: .62rem; font-weight: 700; padding: 2px 7px; border: 1px solid; border-radius: 10px; color: #eee; background: rgba(255,255,255,.06); letter-spacing: .03em; }
+.hof-card-stats { display: flex; gap: 10px; font-size: .72rem; color: #aaa; flex-wrap: wrap; }
+.hof-empty { text-align: center; color: #aaa; padding: 32px; font-size: .88rem; line-height: 1.8; background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
+.hof-legends { display: flex; flex-direction: column; gap: 12px; }
+.hof-legend-card {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: linear-gradient(135deg, #1a1500, #100c00);
+  border: 1px solid #4a3800; border-radius: 8px; padding: 14px;
+}
+.hof-legend-icon { font-size: 2rem; min-width: 36px; text-align: center; }
+.hof-legend-body { flex: 1; }
+.hof-legend-body strong { display: block; font: 700 .95rem 'Segoe UI', sans-serif; color: #ffd700; margin-bottom: 3px; }
+.hof-legend-bio { font-size: .78rem; color: #bbb; font-style: italic; margin: 6px 0 0; }

@@ -1372,3 +1372,631 @@ class RingAnimation {
     return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
   }
 }
+
+// ============================================================
+//  PresserAnimation  –  Coletiva de imprensa animada
+// ============================================================
+class PresserAnimation {
+  constructor(canvas, f1, f2, cfg = {}) {
+    this.canvas = canvas;
+    this.ctx    = canvas.getContext('2d');
+    this.w      = canvas.width;
+    this.h      = canvas.height;
+
+    this.f1  = { name: f1.name, color: f1.color || '#e63946', role: f1.role || '' };
+    this.f2  = { name: f2.name, color: f2.color || '#4ecdc4', role: f2.role || '' };
+    this.cfg = { title: cfg.title || '', scope: cfg.scope || 'national', promoter: cfg.promoter || '' };
+
+    this._tick   = 0;
+    this.running = false;
+    this._raf    = null;
+
+    this.seats = {
+      p1: { x: this.w * 0.28, y: this.h * 0.57 },
+      p2: { x: this.w * 0.72, y: this.h * 0.57 },
+    };
+
+    // Per-fighter animation state
+    this._anim = {
+      p1: { state: 'idle', timer: 0, offsetY: 0, offsetX: 0, glow: 0, shake: 0 },
+      p2: { state: 'idle', timer: 0, offsetY: 0, offsetX: 0, glow: 0, shake: 0 },
+    };
+
+    this._camFlashes  = [];
+    this._particles   = [];
+    this._journalists = this._buildJournalists();
+  }
+
+  // ── API ───────────────────────────────────────────────────
+  react(who, tone) {
+    const apply = (key, dur) => {
+      const a = this._anim[key];
+      a.state = 'react_' + tone;
+      a.timer = dur;
+      a.glow  = tone === 'confident' ? 1.0 : 0;
+    };
+    if (who === 'p1' || who === 'both') apply('p1', 130);
+    if (who === 'p2' || who === 'both') apply('p2', 95);
+    this._triggerFlashes(tone === 'aggressive' ? 7 : 4);
+  }
+
+  opponentReact(tone) { this.react('p2', tone); }
+
+  start() { if (this.running) return; this.running = true; this._loop(); }
+  stop()  { this.running = false; if (this._raf) cancelAnimationFrame(this._raf); }
+
+  // ── Loop ─────────────────────────────────────────────────
+  _loop() {
+    if (!this.running) return;
+    this._update();
+    this._draw();
+    this._raf = requestAnimationFrame(() => this._loop());
+  }
+
+  _update() {
+    this._tick++;
+
+    for (const key of ['p1', 'p2']) {
+      const a = this._anim[key];
+      if (a.timer > 0) {
+        a.timer--;
+        const t = a.timer;
+        const total = key === 'p1' ? 130 : 95;
+        switch (a.state) {
+          case 'react_aggressive':
+            // Rise up, shake, then settle
+            a.offsetY = t > total * 0.65 ? -(total - t) * 0.45
+                      : t > total * 0.35 ? -total * 0.65 * 0.45
+                      : -t * 0.25;
+            a.shake   = t > total * 0.45 ? (t % 5 < 2 ? 4 : -4) : 0;
+            if (t === Math.round(total * 0.85) || t === Math.round(total * 0.75)) {
+              this._emitSlam(key);
+            }
+            break;
+          case 'react_confident':
+            // Lean forward toward center
+            a.offsetX = key === 'p1'
+              ? Math.min((total - t) / total * 16, 16) * (t > 20 ? 1 : t / 20)
+              : -Math.min((total - t) / total * 16, 16) * (t > 20 ? 1 : t / 20);
+            a.glow = t > 25 ? (total - t) / total : t / 25;
+            break;
+          case 'react_humble':
+            // Bow head, then return
+            a.offsetY = t > total * 0.75 ? (total - t) * 0.18
+                      : t < total * 0.22 ? -(t) * 0.2
+                      : total * 0.25 * 0.18;
+            break;
+          case 'react_diplomatic':
+            // Gentle nod
+            a.offsetY = Math.sin((total - t) * 0.14) * 5;
+            break;
+        }
+        if (a.timer === 0) {
+          Object.assign(a, { state: 'idle', offsetY: 0, offsetX: 0, glow: 0, shake: 0 });
+        }
+      }
+    }
+
+    for (const j of this._journalists) {
+      if (j.flashTimer > 0) j.flashTimer--;
+    }
+
+    // Periodic ambient flashes from cameras
+    if (this._tick % 110 === 0) this._triggerFlashes(1);
+
+    this._camFlashes = this._camFlashes.filter(f => --f.life > 0);
+    for (const p of this._particles) {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.16; p.vx *= 0.92; p.life--;
+    }
+    this._particles = this._particles.filter(p => p.life > 0);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
+  _buildJournalists() {
+    const { w, h } = this;
+    const list = [];
+    // Left press table — 3 people, evenly spaced
+    for (let i = 0; i < 3; i++) {
+      list.push({ x: w * 0.08 + i * w * 0.10, y: h * 0.855, phase: i * 1.3, hasCamera: i === 1, flashTimer: 0 });
+    }
+    // Right press table — 3 people
+    for (let i = 0; i < 3; i++) {
+      list.push({ x: w * 0.62 + i * w * 0.10, y: h * 0.855, phase: i * 1.7 + 0.9, hasCamera: i === 1, flashTimer: 0 });
+    }
+    return list;
+  }
+
+  _triggerFlashes(count) {
+    for (let i = 0; i < count; i++) {
+      const j = this._journalists[Math.floor(Math.random() * this._journalists.length)];
+      j.flashTimer = 18 + Math.random() * 22;
+      this._camFlashes.push({
+        x: j.x + (Math.random() - 0.5) * 30,
+        y: j.y - 18,
+        life: 10, maxLife: 10,
+        size: 7 + Math.random() * 9,
+      });
+    }
+  }
+
+  _emitSlam(who) {
+    const pos = this.seats[who];
+    const col = who === 'p1' ? this.f1.color : this.f2.color;
+    for (let i = 0; i < 7; i++) {
+      this._particles.push({
+        x: pos.x + (Math.random() - 0.5) * 28,
+        y: pos.y - 8,
+        vx: (Math.random() - 0.5) * 3.5,
+        vy: -Math.random() * 3.5,
+        life: rand(14, 24), maxLife: 22,
+        color: col,
+        size: randFloat(1.5, 3.5),
+      });
+    }
+  }
+
+  // ── Desenho ───────────────────────────────────────────────
+  _draw() {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.w, this.h);
+    this._drawBg();
+    this._drawBackdrop();
+    this._drawTable();
+    this._drawMics();
+    this._drawSeatedFighter('p1');
+    this._drawSeatedFighter('p2');
+    this._drawJournalistArea();
+    this._drawCamFlashes();
+    this._drawParticles();
+    this._drawVignette();
+  }
+
+  _drawBg() {
+    const ctx = this.ctx;
+    const { w, h } = this;
+    const cols = {
+      national:    ['#0e0c1a', '#1a1428'],
+      continental: ['#0c0818', '#140e24'],
+      world:       ['#100c06', '#1e1600'],
+    };
+    const [c1, c2] = cols[this.cfg.scope] || cols.national;
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, c1); bg.addColorStop(1, c2);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  _drawBackdrop() {
+    const ctx = this.ctx;
+    const { w, h } = this;
+    const bx = w * 0.05, by = h * 0.02;
+    const bw = w * 0.90, bh = h * 0.38;
+
+    // Shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur  = 18;
+    ctx.fillStyle = '#0a0808';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.shadowBlur = 0;
+
+    // Background gradient
+    const bgCols = {
+      national:    ['#1c1460', '#0e0a38'],
+      continental: ['#1c0850', '#0e0528'],
+      world:       ['#281800', '#160c00'],
+    };
+    const [s1, s2] = bgCols[this.cfg.scope] || bgCols.national;
+    const bg = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
+    bg.addColorStop(0, s1); bg.addColorStop(1, s2);
+    ctx.fillStyle = bg;
+    ctx.fillRect(bx, by, bw, bh);
+
+    // World: gold border
+    if (this.cfg.scope === 'world') {
+      ctx.globalAlpha = 0.65;
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx, by, bw, bh);
+      ctx.globalAlpha = 1;
+    }
+
+    // Top accent stripe
+    const stripeCol = { national: '#2244cc', continental: '#8822cc', world: '#c8a000' }[this.cfg.scope] || '#2244cc';
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = stripeCol;
+    ctx.fillRect(bx, by, bw, 5);
+    ctx.globalAlpha = 1;
+
+    // Fight title (center)
+    const titleText = this.cfg.title || 'COLETIVA DE IMPRENSA';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = this.cfg.scope === 'world' ? '#ffd700' : '#ffffff';
+    ctx.font = `bold ${Math.round(bw * 0.052)}px sans-serif`;
+    ctx.fillText(titleText.toUpperCase(), bx + bw / 2, by + bh * 0.38);
+
+    // Promoter
+    if (this.cfg.promoter) {
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.font = `${Math.round(bw * 0.028)}px sans-serif`;
+      ctx.fillText(this.cfg.promoter.toUpperCase(), bx + bw / 2, by + bh * 0.60);
+    }
+
+    // Fighter nameplates — left (f1) and right (f2)
+    const nw = bw * 0.30, nh = bh * 0.25;
+    for (const [fighter, align, nx] of [
+      [this.f1, 'left',  bx + 10],
+      [this.f2, 'right', bx + bw - 10],
+    ]) {
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = fighter.color;
+      ctx.fillRect(align === 'left' ? nx : nx - nw, by + bh - nh - 6, nw, nh);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = fighter.color;
+      ctx.font = `bold ${Math.round(bw * 0.029)}px sans-serif`;
+      ctx.textAlign = align;
+      ctx.textBaseline = 'middle';
+      const tx = align === 'left' ? nx + 8 : nx - 8;
+      ctx.fillText(fighter.name.toUpperCase(), tx, by + bh - nh / 2 - 8);
+      if (fighter.role) {
+        ctx.fillStyle = 'rgba(255,255,255,0.40)';
+        ctx.font = `${Math.round(bw * 0.022)}px sans-serif`;
+        ctx.fillText(fighter.role, tx, by + bh - nh / 2 + 8);
+      }
+    }
+  }
+
+  _drawTable() {
+    const ctx = this.ctx;
+    const { w, h } = this;
+    const tx = w * 0.03, ty = h * 0.60;
+    const tw = w * 0.94, thTop = h * 0.035, thFace = h * 0.155;
+
+    // Table top (dark wood)
+    const topGrad = ctx.createLinearGradient(tx, ty, tx, ty + thTop);
+    topGrad.addColorStop(0, '#2e2010'); topGrad.addColorStop(1, '#1c1208');
+    ctx.fillStyle = topGrad;
+    ctx.fillRect(tx, ty, tw, thTop);
+
+    // Top edge highlight
+    ctx.globalAlpha = 0.6;
+    ctx.strokeStyle = '#5a3a20';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + tw, ty); ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Table front face
+    const faceGrad = ctx.createLinearGradient(tx, ty + thTop, tx, ty + thTop + thFace);
+    faceGrad.addColorStop(0, '#1e1208'); faceGrad.addColorStop(1, '#140c04');
+    ctx.fillStyle = faceGrad;
+    ctx.fillRect(tx, ty + thTop, tw, thFace);
+
+    // Title on table front
+    if (this.cfg.title) {
+      ctx.fillStyle = 'rgba(255,255,255,0.10)';
+      ctx.font = `bold ${Math.round(tw * 0.034)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(this.cfg.title.toUpperCase(), w / 2, ty + thTop + thFace * 0.55);
+    }
+
+    // Table legs
+    ctx.globalAlpha = 0.4;
+    ctx.strokeStyle = '#100a04'; ctx.lineWidth = 4;
+    for (const lx of [tx + 22, tx + tw - 22]) {
+      ctx.beginPath();
+      ctx.moveTo(lx, ty + thTop + thFace);
+      ctx.lineTo(lx, ty + thTop + thFace + h * 0.07);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  _drawMics() {
+    const ctx = this.ctx;
+    const { h } = this;
+    const tableY = h * 0.60;
+
+    for (const [sx, col] of [[this.seats.p1.x, this.f1.color], [this.seats.p2.x, this.f2.color]]) {
+      ctx.save();
+      ctx.globalAlpha = 0.88;
+      // Stand
+      ctx.strokeStyle = '#999'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sx, tableY);
+      ctx.lineTo(sx, tableY - h * 0.065);
+      ctx.lineTo(sx - 4, tableY - h * 0.09);
+      ctx.stroke();
+      // Mic head
+      ctx.fillStyle = '#bbb';
+      ctx.beginPath(); ctx.ellipse(sx - 4, tableY - h * 0.10, 4.5, 5.5, -0.3, 0, Math.PI * 2); ctx.fill();
+      // Color dot (logo)
+      ctx.fillStyle = col; ctx.globalAlpha = 0.7;
+      ctx.beginPath(); ctx.arc(sx - 4, tableY - h * 0.10, 2.8, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  _drawSeatedFighter(who) {
+    const ctx = this.ctx;
+    const { w, h } = this;
+    const fighter = who === 'p1' ? this.f1 : this.f2;
+    const a       = this._anim[who];
+    const seat    = this.seats[who];
+    const color   = fighter.color;
+    const s       = 21;  // bigger figure
+
+    const tableY  = h * 0.60;
+    const x       = seat.x + (a.offsetX || 0) + (a.shake || 0);
+    const bodyY   = tableY - s * 0.7 + (a.offsetY || 0);
+
+    // Glow (confident)
+    if (a.glow > 0.05) {
+      const gl = ctx.createRadialGradient(x, bodyY - s * 1.0, s * 0.4, x, bodyY - s * 1.0, s * 3.2);
+      gl.addColorStop(0, `${color}66`); gl.addColorStop(1, `${color}00`);
+      ctx.fillStyle = gl;
+      ctx.globalAlpha = a.glow * 0.6;
+      ctx.beginPath(); ctx.arc(x, bodyY - s * 1.0, s * 3.2, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // ── Arms (L-shape: upper arm down → forearm horizontal to table) ──
+    const armColor = this._lighten(color, 0.06);
+    ctx.strokeStyle = armColor;
+    ctx.lineWidth   = s * 0.28;   // thin — no glove look
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.globalAlpha = 0.88;
+
+    const shoulderY = bodyY + s * 0.18;
+    const elbowLX = x - s * 0.82, elbowRX = x + s * 0.82;
+    const elbowY  = shoulderY + s * 0.62;
+    const wristY  = tableY - s * 0.14;
+
+    // Helper: draw one arm (shoulder → elbow → wrist)
+    const drawArm = (sx, sy, ex, ey, wx, wy) => {
+      ctx.beginPath();
+      ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.lineTo(wx, wy);
+      ctx.stroke();
+    };
+
+    const wav = Math.sin(this._tick * 0.3) * 2;
+
+    if (a.state === 'react_aggressive' && a.timer > 55) {
+      // Slam fists forward on table — arms go DOWN and slightly inward
+      const lean = Math.min((130 - a.timer) / 35, 1) * s * 0.3;
+      drawArm(x - s*0.5, shoulderY,  x - s*0.6, shoulderY + s*0.35 + wav,  x - s*0.45 + lean, wristY + wav);
+      drawArm(x + s*0.5, shoulderY,  x + s*0.6, shoulderY + s*0.35 - wav,  x + s*0.45 - lean, wristY - wav);
+    } else if (a.state === 'react_confident' && a.timer > 20) {
+      // One arm extends toward opponent, other rests normally
+      const dir = who === 'p1' ? 1 : -1;
+      // Near arm (rests)
+      drawArm(x - s*0.5*dir, shoulderY,  x - s*0.65*dir, shoulderY + s*0.4,  x - s*0.55*dir, wristY);
+      // Far arm (reaches toward center)
+      drawArm(x + s*0.5*dir, shoulderY,  x + s*0.7*dir, shoulderY + s*0.25,  x + s*1.3*dir, wristY - s*0.1);
+    } else {
+      // Idle / humble / diplomatic — arms hang straight down to table, close to body
+      drawArm(x - s*0.48, shoulderY,  x - s*0.62, shoulderY + s*0.42,  x - s*0.55, wristY);
+      drawArm(x + s*0.48, shoulderY,  x + s*0.62, shoulderY + s*0.42,  x + s*0.55, wristY);
+    }
+    ctx.globalAlpha = 1;
+
+    // ── Torso / shirt ──
+    const torsoG = ctx.createLinearGradient(x - s * 0.65, bodyY - s * 0.2, x + s * 0.65, bodyY + s * 0.7);
+    torsoG.addColorStop(0, this._lighten(color, 0.22));
+    torsoG.addColorStop(1, this._darken(color, 0.35));
+    ctx.fillStyle = torsoG;
+    ctx.beginPath();
+    ctx.ellipse(x, bodyY + s * 0.22, s * 0.68, s * 0.82, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Collar / shirt detail
+    ctx.strokeStyle = this._lighten(color, 0.35);
+    ctx.lineWidth = 1.2;
+    ctx.globalAlpha = 0.45;
+    ctx.beginPath();
+    ctx.moveTo(x, bodyY - s * 0.42);
+    ctx.lineTo(x - s * 0.18, bodyY + s * 0.08);
+    ctx.moveTo(x, bodyY - s * 0.42);
+    ctx.lineTo(x + s * 0.18, bodyY + s * 0.08);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // ── Head ──
+    const bowOffset = a.state === 'react_humble' ? (a.offsetY || 0) * 0.55 : 0;
+    const headX = x, headY = bodyY - s * 0.78 + bowOffset;
+    const headG = ctx.createRadialGradient(headX - 2, headY - 3, 1, headX, headY, s * 0.56);
+    headG.addColorStop(0, '#f5d898'); headG.addColorStop(1, '#c08850');
+    ctx.fillStyle = headG;
+    ctx.beginPath(); ctx.arc(headX, headY, s * 0.50, 0, Math.PI * 2); ctx.fill();
+
+    // Hair
+    ctx.fillStyle = this._darken(color, 0.15);
+    ctx.globalAlpha = 0.50;
+    ctx.beginPath();
+    ctx.ellipse(headX, headY - s * 0.30, s * 0.48, s * 0.24, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Eyes
+    const eyeY = headY - s * 0.04;
+    ctx.fillStyle = '#222';
+    ctx.globalAlpha = 0.75;
+    for (const ex of [headX - s * 0.17, headX + s * 0.17]) {
+      ctx.beginPath(); ctx.arc(ex, eyeY, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+    // Eye whites
+    ctx.fillStyle = '#fff';
+    ctx.globalAlpha = 0.18;
+    for (const ex of [headX - s * 0.17, headX + s * 0.17]) {
+      ctx.beginPath(); ctx.ellipse(ex, eyeY, 2.8, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // ── Nameplate on table front face (not floating below) ──
+    const npY  = tableY + h * 0.055;
+    const npW  = s * 4.2, npH = s * 0.72;
+    ctx.fillStyle = `${color}22`;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x - npW / 2, npY, npW, npH, 2);
+    else ctx.rect(x - npW / 2, npY, npW, npH);
+    ctx.fill();
+    ctx.strokeStyle = `${color}55`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.font = `bold ${Math.round(npH * 0.65)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Truncate name to fit
+    // Use last name (last word) for the nameplate — avoids showing nickname prefixes
+    const parts = fighter.name.trim().split(' ');
+    const firstName = parts[parts.length - 1].toUpperCase();
+    ctx.fillText(firstName, x, npY + npH * 0.54);
+  }
+
+  _drawJournalistArea() {
+    const ctx = this.ctx;
+    const { w, h } = this;
+    const tick = this._tick;
+
+    // Two press tables
+    for (const [tx, tw2] of [[w * 0.02, w * 0.35], [w * 0.63, w * 0.35]]) {
+      const ty2 = h * 0.79, th2 = h * 0.16;
+      // Table body
+      ctx.globalAlpha = 0.80;
+      ctx.fillStyle = '#1a0e08';
+      ctx.fillRect(tx, ty2, tw2, th2);
+      // Top edge highlight
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = '#4a2e18'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(tx, ty2); ctx.lineTo(tx + tw2, ty2); ctx.stroke();
+      ctx.strokeStyle = '#2e1c0c'; ctx.lineWidth = 1;
+      ctx.strokeRect(tx, ty2, tw2, th2);
+      ctx.globalAlpha = 1;
+    }
+
+    // Journalists — larger (s=13)
+    for (const j of this._journalists) {
+      const bob = Math.sin(tick * 0.055 + j.phase) * 1.5;
+      const s = 13;
+      const x = j.x, y = j.y + bob;
+
+      ctx.globalAlpha = 0.85;
+      // Body (jacket)
+      const bodyG = ctx.createLinearGradient(x - s * 0.5, y, x + s * 0.5, y + s * 1.5);
+      bodyG.addColorStop(0, '#2e2e42'); bodyG.addColorStop(1, '#1a1a28');
+      ctx.fillStyle = bodyG;
+      ctx.beginPath(); ctx.ellipse(x, y + s * 1.0, s * 0.50, s * 0.72, 0, 0, Math.PI * 2); ctx.fill();
+      // Shirt collar / tie line
+      ctx.strokeStyle = '#aaaa88'; ctx.lineWidth = 1; ctx.globalAlpha = 0.35;
+      ctx.beginPath(); ctx.moveTo(x, y + s * 0.32); ctx.lineTo(x, y + s * 0.85); ctx.stroke();
+      ctx.globalAlpha = 0.85;
+      // Head
+      ctx.fillStyle = '#e0b888';
+      ctx.beginPath(); ctx.arc(x, y, s * 0.44, 0, Math.PI * 2); ctx.fill();
+      // Hair
+      ctx.fillStyle = '#2a1a0a'; ctx.globalAlpha = 0.55;
+      ctx.beginPath(); ctx.ellipse(x, y - s * 0.24, s * 0.42, s * 0.20, 0, Math.PI, 0); ctx.fill();
+      ctx.globalAlpha = 0.85;
+      // Eyes (tiny dots)
+      ctx.fillStyle = '#333';
+      for (const ex of [x - s * 0.14, x + s * 0.14]) {
+        ctx.beginPath(); ctx.arc(ex, y + s * 0.02, 1.1, 0, Math.PI * 2); ctx.fill();
+      }
+
+      if (j.hasCamera) {
+        const lit = j.flashTimer > 0;
+        // Arms holding camera
+        ctx.strokeStyle = '#2e2e42'; ctx.lineWidth = s * 0.20; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x - s * 0.45, y + s * 0.38);
+        ctx.lineTo(x + s * 0.35, y + s * 0.10); ctx.stroke();
+        // Camera body
+        ctx.fillStyle = '#181818';
+        const cx = x + s * 0.35, cy = y + s * 0.10;
+        ctx.fillRect(cx - 2, cy - s * 0.26, s * 0.78, s * 0.46);
+        // Lens circle
+        ctx.fillStyle = lit ? '#ffffcc' : '#1c4a78';
+        ctx.globalAlpha = lit ? 1.0 : 0.85;
+        ctx.beginPath(); ctx.arc(cx + s * 0.52, cy, s * 0.22, 0, Math.PI * 2); ctx.fill();
+        // Lens rim
+        ctx.strokeStyle = '#444'; ctx.lineWidth = 0.8; ctx.globalAlpha = 0.7;
+        ctx.beginPath(); ctx.arc(cx + s * 0.52, cy, s * 0.26, 0, Math.PI * 2); ctx.stroke();
+        // REC blink dot
+        ctx.fillStyle = '#e63946';
+        ctx.globalAlpha = 0.5 + Math.sin(tick * 0.13) * 0.5;
+        ctx.beginPath(); ctx.arc(cx + s * 0.08, cy - s * 0.18, 1.8, 0, Math.PI * 2); ctx.fill();
+      } else {
+        // Notepad in hands
+        ctx.strokeStyle = '#2e2e42'; ctx.lineWidth = s * 0.20; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x - s * 0.4, y + s * 0.38);
+        ctx.lineTo(x + s * 0.1, y + s * 0.55); ctx.stroke();
+        ctx.fillStyle = '#f5f5e0'; ctx.globalAlpha = 0.65;
+        ctx.fillRect(x + s * 0.04, y + s * 0.40, s * 0.55, s * 0.38);
+        // Lines on notepad
+        ctx.strokeStyle = '#bbb'; ctx.lineWidth = 0.7; ctx.globalAlpha = 0.5;
+        for (let li = 0; li < 3; li++) {
+          const ly = y + s * 0.50 + li * s * 0.10;
+          ctx.beginPath(); ctx.moveTo(x + s * 0.08, ly); ctx.lineTo(x + s * 0.54, ly); ctx.stroke();
+        }
+        // Pen
+        ctx.strokeStyle = '#666'; ctx.lineWidth = 1; ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(x + s * 0.50, y + s * 0.38);
+        ctx.lineTo(x + s * 0.62, y + s * 0.25); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  _drawCamFlashes() {
+    const ctx = this.ctx;
+    for (const f of this._camFlashes) {
+      const alpha = (f.life / f.maxLife) * 0.75;
+      const grad  = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.size * 2.2);
+      grad.addColorStop(0, 'rgba(255,255,255,0.92)');
+      grad.addColorStop(0.3, 'rgba(255,255,200,0.55)');
+      grad.addColorStop(1, 'rgba(255,255,200,0)');
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.size * 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  _drawParticles() {
+    const ctx = this.ctx;
+    for (const p of this._particles) {
+      const a = (p.life / p.maxLife) * 0.85;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * a, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  _drawVignette() {
+    const ctx = this.ctx;
+    const { w, h } = this;
+    const vig = ctx.createRadialGradient(w / 2, h / 2, w * 0.18, w / 2, h / 2, w * 0.72);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.60)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  _lighten(hex, amt) {
+    const [r, g, b] = this._parseHex(hex);
+    return `rgb(${Math.min(255,r+255*amt)},${Math.min(255,g+255*amt)},${Math.min(255,b+255*amt)})`;
+  }
+  _darken(hex, amt) {
+    const [r, g, b] = this._parseHex(hex);
+    return `rgb(${Math.max(0,r-255*amt)},${Math.max(0,g-255*amt)},${Math.max(0,b-255*amt)})`;
+  }
+  _parseHex(hex) {
+    const h = hex.replace('#', '');
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+  }
+}

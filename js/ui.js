@@ -117,7 +117,7 @@ class UI {
         <li>Transição Atleta → Academia com bônus de legado</li>
       </ul>
       <p style="color:#888; font-size:.82em; margin-top:16px">
-        RINGUE v1.2.0 — Coletiva de imprensa visual · Entrevistas contextuais · Overhaul do treino 🎉<br>
+        RINGUE v1.2.2 — Vista interior da academia · Hall da Fama · Coletiva animada · Overhaul do treino 🎉<br>
         Modo Atleta completo · Modo Academia completo · Modo Federação em breve<br>
         <a href="https://github.com/Mateuskage10332608/RINGUE" style="color:#4a9eff">github.com/Mateuskage10332608/RINGUE</a>
       </p>
@@ -546,6 +546,9 @@ class UI {
         <button class="${active === 'academyBuilder' ? 'active' : ''}" data-academy-nav="academyBuilder">
           <span class="nav-icon">🏗️</span> Academia
         </button>
+        <button class="${active === 'academyHallOfFame' ? 'active' : ''}" data-academy-nav="academyHallOfFame">
+          <span class="nav-icon">🏆</span> Hall da Fama
+        </button>
       </nav>
       <div class="academy-nav-footer">
         <div class="academy-nav-caixa">💰 ${formatCurrency(a.money)}</div>
@@ -792,7 +795,14 @@ class UI {
       const res = this.gs.advanceAcademyWeek();
       this.gs.save();
       if (res.pendingFights?.length) {
-        this.show('academyFightWatch', { pending: res.pendingFights, idx: 0 });
+        const first = res.pendingFights[0];
+        const importanceScope = { mundial: 'world', continental: 'continental', nacional: 'national' };
+        const scope = importanceScope[first.importance] || null;
+        if (scope && !first.preFightPresserDone) {
+          this.show('academyPresser', { pending: res.pendingFights, fight: first, mediaScope: scope });
+        } else {
+          this.show('academyFightWatch', { pending: res.pendingFights, idx: 0 });
+        }
       } else {
         this.show('academyHub');
       }
@@ -1386,11 +1396,21 @@ class UI {
 
         ${founderSection}
 
+        <div class="builder-view-toggle">
+          <button class="bvt-btn bvt-active" id="bvt-facade">🏢 Fachada</button>
+          <button class="bvt-btn" id="bvt-interior">🗺️ Interior</button>
+        </div>
+
         <div class="builder-layout">
           <!-- Fachada -->
-          <div class="builder-facade-panel">
+          <div class="builder-facade-panel" id="builder-facade-panel">
             <div class="builder-facade-wrap">${facade}</div>
             <div class="builder-bonuses">${bonusChips || '<span style="color:#888;font-size:.75rem">Sem bônus ainda</span>'}</div>
+          </div>
+
+          <!-- Interior top-down (hidden by default) -->
+          <div class="builder-interior-panel" id="builder-interior-panel" style="display:none">
+            ${this._builderInterior(levelItems, founderItems)}
           </div>
 
           <!-- Grid de Itens -->
@@ -1422,6 +1442,48 @@ class UI {
       const res = this.gs.expandAcademy();
       if (!res.success) return this._toast(res.reason);
       this.gs.save(); this.show('academyBuilder');
+    });
+
+    // facade / interior toggle
+    const facadePanel   = this.root.querySelector('#builder-facade-panel');
+    const interiorPanel = this.root.querySelector('#builder-interior-panel');
+    const bvtFacade     = this.root.querySelector('#bvt-facade');
+    const bvtInterior   = this.root.querySelector('#bvt-interior');
+    bvtFacade?.addEventListener('click', () => {
+      facadePanel.style.display = '';
+      interiorPanel.style.display = 'none';
+      bvtFacade.classList.add('bvt-active');
+      bvtInterior.classList.remove('bvt-active');
+    });
+    bvtInterior?.addEventListener('click', () => {
+      facadePanel.style.display = 'none';
+      interiorPanel.style.display = '';
+      bvtFacade.classList.remove('bvt-active');
+      bvtInterior.classList.add('bvt-active');
+    });
+
+    // Interior item detail modal
+    this.root.querySelectorAll('[data-interior-item]').forEach(tile => {
+      tile.addEventListener('click', () => {
+        const existing = this.root.querySelector('#interior-modal');
+        if (existing) existing.remove();
+        const d = JSON.parse(tile.dataset.interiorItem);
+        const overlay = document.createElement('div');
+        overlay.id = 'interior-modal';
+        overlay.className = 'interior-modal-overlay';
+        overlay.innerHTML = `
+          <div class="interior-modal">
+            <div class="interior-modal-icon">${d.icon}</div>
+            <div class="interior-modal-name">${d.name}</div>
+            <div class="interior-modal-flavor">${d.flavor}</div>
+            ${d.effect ? `<div class="interior-modal-effect">${d.effect}</div>` : ''}
+            ${d.badge ? `<span class="founder-item-badge" style="margin-top:8px">${d.badge}</span>` : ''}
+            <button class="interior-modal-close">✕ Fechar</button>
+          </div>`;
+        this.root.querySelector('.academy-main').appendChild(overlay);
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        overlay.querySelector('.interior-modal-close').addEventListener('click', () => overlay.remove());
+      });
     });
   }
 
@@ -1592,6 +1654,69 @@ class UI {
           </button>
         </div>`;
       }).join('')}
+    </div>`;
+  }
+
+  _builderInterior(levelItems, founderItems = []) {
+    // All purchased regular items grouped by room
+    const boughtItems = levelItems.filter(it => it.bought);
+    const byRoom = {};
+    for (const it of boughtItems) {
+      const flavor = (typeof ITEM_FLAVOR !== 'undefined' ? ITEM_FLAVOR : {})[it.id] || {};
+      const room = flavor.room || 'comfort';
+      if (!byRoom[room]) byRoom[room] = [];
+      byRoom[room].push({ ...it, flavor: flavor.flavor || it.desc || 'Item da academia.', room });
+    }
+
+    const rooms = (typeof INTERIOR_ROOMS !== 'undefined' ? INTERIOR_ROOMS : []).filter(r =>
+      byRoom[r.id]?.length > 0
+    );
+
+    const tile = (item, badge = '') => {
+      const d = JSON.stringify({
+        icon: item.icon, name: item.name,
+        flavor: item.flavor || item.desc || '',
+        effect: item.effect || '',
+        badge,
+      }).replace(/"/g, '&quot;');
+      return `<div class="interior-item-tile" data-interior-item="${d}" title="${item.name}">
+        <span class="interior-tile-icon">${item.icon}</span>
+        <span class="interior-tile-name">${item.name}</span>
+      </div>`;
+    };
+
+    const roomBlocks = rooms.map(r => `
+      <div class="interior-room" style="border-color:${r.border};background:${r.color}">
+        <div class="interior-room-label">${r.icon} ${r.label}</div>
+        <div class="interior-room-items">
+          ${byRoom[r.id].map(it => tile(it)).join('')}
+        </div>
+      </div>`).join('');
+
+    // Founder/legacy items as their own zone
+    const founderBlock = founderItems.length ? `
+      <div class="interior-room interior-room-legacy" style="border-color:#a07820;background:#120e00">
+        <div class="interior-room-label">✦ Legado do Fundador</div>
+        <div class="interior-room-items">
+          ${founderItems.map(it => tile({
+            icon: it.icon, name: it.name,
+            flavor: it.desc,
+            effect: Object.entries(it.effect).map(([k,v]) => {
+              const lbl = { trainBonus:'Treino', injuryRisk:'Lesão', scoutBonus:'Scouting', morale:'Moral', reputation:'Reputação' };
+              return `${lbl[k]||k} +${v}`;
+            }).join(' · '),
+          }, '✦ Legado')).join('')}
+        </div>
+      </div>` : '';
+
+    if (!rooms.length && !founderItems.length) {
+      return `<div class="interior-empty">Nenhum item comprado ainda.<br>Comece a construir sua academia para ver o interior.</div>`;
+    }
+
+    return `<div class="interior-floor">
+      ${founderBlock}
+      ${roomBlocks}
+      <div class="interior-hint">💡 Clique em qualquer item para ver a descrição</div>
     </div>`;
   }
 
@@ -4410,7 +4535,8 @@ class UI {
   }
 
   _render_preFightInterview({ questions, fight, mediaScope, presserCtx = {} }) {
-    let current = 0;
+    let current   = 0;
+    let presserAnim = null;
     const p   = this.gs.player;
     const opp = fight.opponent;
     const worldOrgs = ['WBC','WBA','IBF','WBO'];
@@ -4420,55 +4546,34 @@ class UI {
     };
     const toneLabel = t => ({ aggressive:'Agressivo', confident:'Confiante', humble:'Humilde', diplomatic:'Diplomático' }[t] || t);
 
-    // Determine roles
-    const playerBelts  = (p.belts || []).filter(b => worldOrgs.includes(b));
-    const oppBelts     = (opp.belts || []).filter(b => worldOrgs.includes(b));
+    // Roles and colors
+    const playerBelts = (p.belts || []).filter(b => worldOrgs.includes(b));
+    const oppBelts    = (opp.belts || []).filter(b => worldOrgs.includes(b));
     const isPlayerChamp = playerBelts.length > 0;
     const isOppChamp    = oppBelts.length > 0;
+    const playerRole = isPlayerChamp ? playerBelts.join(' · ') : (isOppChamp ? 'DESAFIANTE' : '');
+    const oppRole    = isOppChamp    ? oppBelts.join(' · ')    : (isPlayerChamp ? 'DESAFIANTE' : '');
 
-    const playerRole = isPlayerChamp
-      ? `🏆 ${playerBelts.length > 1 ? playerBelts.join(' · ') : playerBelts[0]}`
-      : (isOppChamp ? '⚔️ DESAFIANTE' : '');
-    const oppRole = isOppChamp
-      ? `🏆 ${oppBelts.length > 1 ? oppBelts.join(' · ') : oppBelts[0]}`
-      : (isPlayerChamp ? '⚔️ DESAFIANTE' : '');
+    const pColor   = '#e63946';
+    const oppColor = '#4ecdc4';
 
-    const pRecord  = `${p.wins}-${p.losses}${p.draws ? `-${p.draws}` : ''} (${p.kos} KO)`;
-    const oppRecord = `${opp.wins}-${opp.losses}${opp.draws ? `-${opp.draws}` : ''} (${opp.kos} KO)`;
+    const beltLabel = fight.titleBelt
+      ? `${fight.titleBelt.toUpperCase()} — ${p.weightClassData?.name?.toUpperCase() || ''}`
+      : (mediaScope === 'world' ? 'DISPUTA MUNDIAL' : mediaScope === 'continental' ? 'DISPUTA CONTINENTAL' : 'DISPUTA NACIONAL');
 
     // Context badges
     const badges = [];
-    if (presserCtx.isRematch)            badges.push('<span class="presser-badge badge-rematch">🔄 REVANCHE</span>');
-    if (presserCtx.hasRivalry)           badges.push('<span class="presser-badge badge-rivalry">🔥 RIVALIDADE</span>');
-    if (presserCtx.isUnification)        badges.push('<span class="presser-badge badge-unif">👑 UNIFICAÇÃO</span>');
-    if (presserCtx.isSerialChallenger)   badges.push(`<span class="presser-badge badge-serial">${presserCtx.challengeAttempt}ª TENTATIVA</span>`);
-    else if (presserCtx.isSecondAttempt) badges.push('<span class="presser-badge badge-serial">2ª TENTATIVA</span>');
+    if (presserCtx.isRematch)              badges.push('<span class="presser-badge badge-rematch">🔄 REVANCHE</span>');
+    if (presserCtx.hasRivalry)             badges.push('<span class="presser-badge badge-rivalry">🔥 RIVALIDADE</span>');
+    if (presserCtx.isUnification)          badges.push('<span class="presser-badge badge-unif">👑 UNIFICAÇÃO</span>');
+    if (presserCtx.isSerialChallenger)     badges.push(`<span class="presser-badge badge-serial">${presserCtx.challengeAttempt}ª TENTATIVA</span>`);
+    else if (presserCtx.isSecondAttempt)   badges.push('<span class="presser-badge badge-serial">2ª TENTATIVA</span>');
     if (presserCtx.isUndefeatedChallenger) badges.push('<span class="presser-badge badge-undefeated">🛡️ INVICTO</span>');
 
-    // Fight title line
-    const beltLabel = fight.titleBelt ? `— ${fight.titleBelt.toUpperCase()} ${p.weightClassData?.name?.toUpperCase() || ''}` : '';
-
-    const presserStageHTML = `
-      <div class="presser-stage">
-        <div class="presser-fighter presser-left">
-          ${playerRole ? `<div class="presser-role ${isPlayerChamp ? 'presser-champ' : 'presser-chal'}">${playerRole}</div>` : ''}
-          <div class="presser-name">${p.displayName || p.name}</div>
-          <div class="presser-record">${pRecord}</div>
-          <div class="presser-mic">🎙️ 🎙️ 🎙️</div>
-        </div>
-        <div class="presser-center">
-          ${badges.length ? `<div class="presser-badges">${badges.join('')}</div>` : ''}
-          <div class="presser-vs">VS</div>
-        </div>
-        <div class="presser-fighter presser-right">
-          ${oppRole ? `<div class="presser-role ${isOppChamp ? 'presser-champ' : 'presser-chal'}">${oppRole}</div>` : ''}
-          <div class="presser-name">${opp.name}</div>
-          <div class="presser-record">${oppRecord}</div>
-          <div class="presser-mic">🎙️ 🎙️ 🎙️</div>
-        </div>
-      </div>`;
-
     const renderQuestion = () => {
+      // Stop previous animation if any
+      if (presserAnim) { presserAnim.stop(); presserAnim = null; }
+
       const q = questions[current];
       this.root.innerHTML = `
         <div class="screen interview-screen presser-screen">
@@ -4476,8 +4581,10 @@ class UI {
             <span class="presser-banner-label">🎙️ ${scopeLabels[mediaScope] || 'COLETIVA PRÉ-LUTA'}</span>
             <span class="presser-banner-sub">${beltLabel}</span>
           </div>
-          ${presserStageHTML}
-          <div class="presser-divider"></div>
+          <canvas id="presser-canvas" width="640" height="310"
+            style="width:100%;display:block;border-radius:0 0 8px 8px;background:#0a0808;"></canvas>
+          ${badges.length ? `<div class="presser-badges-bar">${badges.join('')}</div>` : ''}
+          <div class="presser-divider" style="margin-top:${badges.length ? 6 : 10}px"></div>
           <div class="interview-header">
             <div class="interview-kicker">📰 PERGUNTA DA IMPRENSA</div>
             <div class="interview-progress">${current + 1} / ${questions.length}</div>
@@ -4486,7 +4593,7 @@ class UI {
             <div class="interview-journalist"><em>"${q.question}"</em></div>
             <div class="interview-answers">
               ${q.answers.map(a => `
-                <button class="interview-answer-btn" data-qid="${q.id}" data-aid="${a.id}">
+                <button class="interview-answer-btn" data-qid="${q.id}" data-aid="${a.id}" data-tone="${a.tone}">
                   <span class="answer-text">${a.text}</span>
                   <span class="answer-tone tone-${a.tone}">${toneLabel(a.tone)}</span>
                 </button>
@@ -4495,10 +4602,34 @@ class UI {
           </div>
         </div>`;
 
+      // Boot animation
+      const canvas = document.getElementById('presser-canvas');
+      if (canvas && typeof PresserAnimation !== 'undefined') {
+        presserAnim = new PresserAnimation(
+          canvas,
+          { name: p.name, color: pColor, role: playerRole },
+          { name: opp.name, color: oppColor, role: oppRole },
+          { title: beltLabel, scope: mediaScope, promoter: fight.promoter?.name || '' }
+        );
+        presserAnim.start();
+      }
+
       document.querySelectorAll('.interview-answer-btn').forEach(btn => {
         btn.onclick = () => {
           const result = this.gs.applyInterviewAnswer(btn.dataset.qid, btn.dataset.aid, opp?.id);
           if (!result) return;
+          const tone = btn.dataset.tone || 'confident';
+
+          // Animate player react
+          if (presserAnim) {
+            presserAnim.react('p1', tone);
+            // Opponent reacts after short delay if they responded
+            if (result.opponentResponse) {
+              const oppTone = tone === 'aggressive' ? 'aggressive' : tone === 'humble' ? 'diplomatic' : 'confident';
+              setTimeout(() => { if (presserAnim) presserAnim.opponentReact(oppTone); }, 1400);
+            }
+          }
+
           const card = document.querySelector('.interview-card');
           card.innerHTML = `
             <div class="interview-reaction">${result.flavor}</div>
@@ -4513,6 +4644,7 @@ class UI {
             </button>
           `;
           document.getElementById('btn-next-pre-question').onclick = () => {
+            if (presserAnim) { presserAnim.stop(); presserAnim = null; }
             current++;
             if (current < questions.length) renderQuestion();
             else this.show('faceOff', { fight, mediaScope });
@@ -4526,6 +4658,200 @@ class UI {
       return;
     }
     renderQuestion();
+  }
+
+  _render_academyHallOfFame() {
+    const a       = this.gs.academy;
+    const roster  = this.gs.getAcademyRoster ? this.gs.getAcademyRoster() : [];
+    const legacy  = this.gs.academy?.legacyAthletes || [];
+    const worldOrgs = ['WBC','WBA','IBF','WBO'];
+
+    // Collect all fighters ever in the academy (roster + legacy)
+    const allFighters = [
+      ...roster,
+      ...legacy.map(l => ({ ...l, isLegacy: true })),
+    ];
+
+    // Belt wall: fighters with any title belt (belts array or worldBelts/continentalBelts in legacy)
+    const beltWall = allFighters.filter(f => {
+      const belts = f.belts || f.worldBelts || [];
+      const contBelts = f.continentalBelts || [];
+      return belts.length > 0 || contBelts.length > 0 || (f.titlesWon || []).length > 0;
+    });
+
+    // HoF: score >= 2.0 or explicit inducted flag
+    const hofMembers = allFighters.filter(f =>
+      (f.goatScore || f.score || 0) >= 2.0 || f.inductedToHoF
+    );
+
+    const formatRecord = f => {
+      const w = f.wins || 0, l = f.losses || 0, d = f.draws || 0;
+      return `${w}-${l}${d ? `-${d}` : ''}`;
+    };
+
+    const beltChip = (belt, color = '#ffd700') =>
+      `<span class="hof-belt-chip" style="border-color:${color}">${belt}</span>`;
+
+    const beltWallCards = beltWall.length ? beltWall.map(f => {
+      const allBelts = [
+        ...(f.belts || f.worldBelts || []),
+        ...(f.continentalBelts || []),
+        ...(f.titlesWon || []),
+      ];
+      const uniqueBelts = [...new Set(allBelts)];
+      const worldBelts = uniqueBelts.filter(b => worldOrgs.includes(b));
+      const otherBelts = uniqueBelts.filter(b => !worldOrgs.includes(b));
+      const flag = (typeof NAMES !== 'undefined' ? NAMES[f.nationality || f.country]?.flag : '') || '';
+      const isInHof = hofMembers.some(h => h.id === f.id);
+      return `<div class="hof-card" data-hof-fighter="${f.id || ''}">
+        <div class="hof-card-header">
+          <span class="hof-flag">${flag}</span>
+          <div class="hof-card-info">
+            <strong class="hof-fighter-name">${f.displayName || f.name}</strong>
+            <span class="hof-record">${formatRecord(f)} (${f.kos || 0} KO)</span>
+          </div>
+          ${isInHof ? '<span class="hof-star-badge">⭐ Hall da Fama</span>' : ''}
+          ${f.isLegacy ? '<span class="hof-legacy-badge">🏛️ Veterano</span>' : ''}
+        </div>
+        <div class="hof-belts">
+          ${worldBelts.map(b => beltChip(b, '#ffd700')).join('')}
+          ${otherBelts.slice(0,4).map(b => beltChip(b, '#8ecde6')).join('')}
+          ${otherBelts.length > 4 ? `<span class="hof-belt-chip" style="border-color:#666">+${otherBelts.length - 4}</span>` : ''}
+        </div>
+        <div class="hof-card-stats">
+          <span>💰 ${formatCurrency(f.prizeMoney || f.earnings || 0)}</span>
+          <span>⭐ ${(f.goatScore || f.score || 0).toFixed(1)} pts</span>
+          ${f.weightClass || f.weightClassName ? `<span>⚖️ ${f.weightClass || f.weightClassName}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('') : `<div class="hof-empty">Nenhum título conquistado ainda.<br>Continue construindo sua academia — os cinturões virão.</div>`;
+
+    const hofCards = hofMembers.length ? hofMembers.map(f => {
+      const flag = (typeof NAMES !== 'undefined' ? NAMES[f.nationality || f.country]?.flag : '') || '';
+      const titles = [...(f.belts || f.worldBelts || []), ...(f.titlesWon || [])];
+      return `<div class="hof-legend-card">
+        <div class="hof-legend-icon">⭐</div>
+        <div class="hof-legend-body">
+          <strong>${flag} ${f.displayName || f.name}</strong>
+          <span class="hof-record">${formatRecord(f)} · ${(f.goatScore || f.score || 0).toFixed(1)} pts GOAT</span>
+          ${titles.length ? `<div style="margin-top:4px">${titles.map(b => beltChip(b, '#ffd700')).join('')}</div>` : ''}
+          ${f.bio ? `<p class="hof-legend-bio">"${f.bio}"</p>` : ''}
+        </div>
+      </div>`;
+    }).join('') : `<div class="hof-empty">Nenhum atleta no Hall da Fama ainda.<br>Campeões com carreira longa entram automaticamente.</div>`;
+
+    this.root.innerHTML = `
+    <div class="academy-app">
+      ${this._academyNav('academyHallOfFame')}
+      <main class="academy-main">
+        <div class="hof-header">
+          <h2 class="hof-title">🏆 ${a.name}</h2>
+          <p class="hof-subtitle">Hall da Fama & Parede de Cinturões</p>
+        </div>
+
+        <section class="hof-section">
+          <div class="hof-section-title">🥇 Parede de Cinturões</div>
+          <div class="hof-section-sub">Todos os atletas que trouxeram títulos para a academia</div>
+          <div class="hof-belt-wall">${beltWallCards}</div>
+        </section>
+
+        <section class="hof-section">
+          <div class="hof-section-title">⭐ Hall da Fama</div>
+          <div class="hof-section-sub">Lendas que definiram a história desta academia</div>
+          <div class="hof-legends">${hofCards}</div>
+        </section>
+      </main>
+    </div>`;
+
+    this._bindAcademyNav();
+  }
+
+  _render_academyPresser({ pending = [], fight, mediaScope }) {
+    let presserAnim = null;
+    const fighter  = this.gs.allFighters.find(f => f.id === fight.fighterId);
+    const opponent = this.gs.allFighters.find(f => f.id === fight.opponentId);
+    if (!fighter || !opponent) return this.show('academyFightWatch', { pending, idx: 0 });
+
+    fight.preFightPresserDone = true;
+
+    const scopeLabels = { national: 'COLETIVA NACIONAL', continental: 'COLETIVA CONTINENTAL', world: 'COLETIVA MUNDIAL' };
+    const fRec = `${fighter.wins}-${fighter.losses}${fighter.draws ? `-${fighter.draws}` : ''}`;
+    const oRec = `${opponent.wins}-${opponent.losses}${opponent.draws ? `-${opponent.draws}` : ''}`;
+    const worldOrgs = ['WBC','WBA','IBF','WBO'];
+    const fBelts  = (fighter.belts  || []).filter(b => worldOrgs.includes(b));
+    const oBelts  = (opponent.belts || []).filter(b => worldOrgs.includes(b));
+    const fRole   = fBelts.length ? fBelts.join(' · ') : (oBelts.length ? 'DESAFIANTE' : '');
+    const oRole   = oBelts.length ? oBelts.join(' · ') : (fBelts.length ? 'DESAFIANTE' : '');
+    const beltLabel = fight.titleBelt
+      ? `${fight.titleBelt.toUpperCase()} — ${fighter.weightClass?.toUpperCase() || ''}`
+      : (mediaScope === 'world' ? 'DISPUTA MUNDIAL' : mediaScope === 'continental' ? 'DISPUTA CONTINENTAL' : 'DISPUTA NACIONAL');
+
+    const instructions = [
+      { id: 'pressure', label: '⚡ Vai para cima — pressão total', tone: 'aggressive',
+        desc: 'Seu lutador entra agressivo, buscando o nocaute.' },
+      { id: 'smart',    label: '🧠 Boxe inteligente — espera a abertura', tone: 'confident',
+        desc: 'Conserva energia, explora os erros do adversário.' },
+      { id: 'respect',  label: '🤝 Respeita o adversário — briga dura', tone: 'humble',
+        desc: 'Reconhece a força do oponente, prepara-se para uma batalha.' },
+      { id: 'adapt',    label: '🔄 Adapta conforme a luta', tone: 'diplomatic',
+        desc: 'Flexibilidade é a chave — reage ao que o oponente mostrar.' },
+    ];
+
+    this.root.innerHTML = `
+      <div class="screen interview-screen presser-screen">
+        <div class="presser-banner">
+          <span class="presser-banner-label">🎙️ ${scopeLabels[mediaScope] || 'COLETIVA PRÉ-LUTA'}</span>
+          <span class="presser-banner-sub">${beltLabel}</span>
+        </div>
+        <canvas id="presser-canvas" width="640" height="310"
+          style="width:100%;display:block;border-radius:0 0 8px 8px;background:#0a0808;"></canvas>
+        <div class="presser-divider" style="margin-top:10px"></div>
+        <div class="interview-header">
+          <div class="interview-kicker">📋 INSTRUÇÕES PRÉ-LUTA</div>
+          <div class="interview-progress">${fighter.name} (${fRec}) vs ${opponent.name} (${oRec})</div>
+        </div>
+        <div class="interview-card">
+          <div class="interview-journalist"><em>"Qual a estratégia do seu lutador para essa luta?"</em></div>
+          <div class="interview-answers">
+            ${instructions.map(ins => `
+              <button class="interview-answer-btn" data-ins="${ins.id}" data-tone="${ins.tone}">
+                <span class="answer-text">${ins.label}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      </div>`;
+
+    const canvas = document.getElementById('presser-canvas');
+    if (canvas && typeof PresserAnimation !== 'undefined') {
+      presserAnim = new PresserAnimation(
+        canvas,
+        { name: fighter.name,  color: '#e63946', role: fRole },
+        { name: opponent.name, color: '#4ecdc4', role: oRole },
+        { title: beltLabel, scope: mediaScope, promoter: '' }
+      );
+      presserAnim.start();
+    }
+
+    document.querySelectorAll('.interview-answer-btn').forEach(btn => {
+      btn.onclick = () => {
+        const tone = btn.dataset.tone;
+        const ins  = instructions.find(i => i.id === btn.dataset.ins);
+        if (presserAnim) { presserAnim.react('p1', tone); }
+        fight.managerInstruction = btn.dataset.ins;
+        const card = document.querySelector('.interview-card');
+        card.innerHTML = `
+          <div class="interview-reaction">✅ ${ins?.desc || ''}</div>
+          <div style="color:var(--text2);font-size:.85em;margin:6px 0 12px">
+            ${fighter.name} acena com a cabeça. A estratégia está definida.
+          </div>
+          <button class="btn btn-primary" id="btn-go-fight">Ir para a luta →</button>`;
+        document.getElementById('btn-go-fight').onclick = () => {
+          if (presserAnim) { presserAnim.stop(); presserAnim = null; }
+          this.show('academyFightWatch', { pending, idx: 0 });
+        };
+      };
+    });
   }
 
   _render_faceOff({ fight, mediaScope }) {
