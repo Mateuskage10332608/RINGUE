@@ -16,7 +16,7 @@ Simulador de boxe gerencial estilo Football Manager, construído em HTML/CSS/JS 
 - Hall da Fama com lendas históricas e indução automática
 - Transição Atleta → Academia com bônus de legado escalados pelo GOAT score
 - LiveFight animado com engine round-a-round
-- Mais de 300 lutadores NPC gerados por 23 nacionalidades
+- ~4.800 lutadores NPC gerados ao iniciar — 12 categorias de peso × 5 continentes × 23 nacionalidades
 
 ## Como rodar
 
