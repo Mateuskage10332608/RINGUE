@@ -1187,6 +1187,218 @@ const PRE_FIGHT_QUESTIONS = [
         flavor: 'O adversário responde ainda durante a coletiva.' },
     ],
   },
+
+  // ── Campeão em defesa ──
+  {
+    id: 'pre_champ_burden',
+    contexts: ['champion_defense', 'world', 'continental'],
+    question: 'Você carrega o cinturão há algum tempo. Como esse peso muda sua preparação para cada defesa?',
+    answers: [
+      { id: 'a', tone: 'confident', text: 'O cinturão é motivação, não peso. Cada defesa me deixa ainda mais forte.',
+        effects: { popularity: 5, reputation: 2, rivalIntensity: 1 },
+        flavor: 'Os analistas destacam a mentalidade campeã.' },
+      { id: 'b', tone: 'humble', text: 'Sinto a responsabilidade. Por isso cada camp começa do zero para mim.',
+        effects: { popularity: 3, reputation: 5, rivalIntensity: 0 },
+        flavor: 'Veteranos do esporte reconhecem a maturidade da resposta.' },
+      { id: 'c', tone: 'diplomatic', text: 'Aprendi a separar o símbolo do alvo. Foco no desafiante, não no cinturão.',
+        effects: { popularity: 2, reputation: 4, rivalIntensity: 0 },
+        flavor: 'Resposta de boxeador completo. A imprensa elogia a postura.' },
+    ],
+  },
+  {
+    id: 'pre_champ_respect_chal',
+    contexts: ['champion_defense', 'world', 'continental'],
+    question: 'Seu desafiante chegou aqui por mérito. Em que momento você sentiu que ele era uma ameaça real?',
+    answers: [
+      { id: 'a', tone: 'diplomatic', text: 'Desde que o vi vencer o mandatório. Ele tem qualidade e merece essa chance.',
+        effects: { popularity: 2, reputation: 5, rivalIntensity: 0 },
+        flavor: 'O elogio pega o desafiante de surpresa. A coletiva ganha um tom mais respeitoso.' },
+      { id: 'b', tone: 'confident', text: 'Qualquer adversário é uma ameaça — é por isso que me preparo como me preparo.',
+        effects: { popularity: 4, reputation: 2, rivalIntensity: 1 },
+        flavor: 'Resposta equilibrada. Confiante sem menosprezar.' },
+      { id: 'c', tone: 'aggressive', text: 'Sinceramente? Ainda não senti. Mas o respeito ele terá dentro do ringue.',
+        effects: { popularity: 6, reputation: -1, rivalIntensity: 3 },
+        flavor: 'O desafiante reage imediatamente. A coletiva esquenta.' },
+    ],
+  },
+  {
+    id: 'pre_champ_legacy_def',
+    contexts: ['champion_defense'],
+    question: 'Quantas defesas você planeja antes de buscar um cinturão de outra organização?',
+    answers: [
+      { id: 'a', tone: 'confident', text: 'Não limite. Vou defender enquanto tiver desafiadores à altura.',
+        effects: { popularity: 5, reputation: 3, rivalIntensity: 1 },
+        flavor: 'A ambição agrada a fãs e promotoras.' },
+      { id: 'b', tone: 'diplomatic', text: 'Esse é um debate que vai surgir naturalmente. Por ora, foco em defender bem.',
+        effects: { popularity: 2, reputation: 4, rivalIntensity: 0 },
+        flavor: 'Resposta profissional. A promotora aprecia a discrição.' },
+      { id: 'c', tone: 'aggressive', text: 'Prefiro ser campeão indiscutível. Quero os outros cinturões na mesa.',
+        effects: { popularity: 7, reputation: 1, rivalIntensity: 2 },
+        flavor: 'Declaração de guerra para os outros campeões da divisão.' },
+    ],
+  },
+
+  // ── Desafiante ──
+  {
+    id: 'pre_chal_moment',
+    contexts: ['challenger', 'world', 'continental'],
+    question: 'Esta é a maior noite da sua carreira até agora. O que passa pela sua cabeça quando pensa no que está em jogo?',
+    answers: [
+      { id: 'a', tone: 'humble', text: 'Penso em todo o caminho percorrido. Cada derrota que me trouxe até aqui.',
+        effects: { popularity: 4, reputation: 5, rivalIntensity: 0 },
+        flavor: 'A história do atleta comove os presentes na coletiva.' },
+      { id: 'b', tone: 'confident', text: 'Não é a maior, é a próxima. Porque depois daqui tem mais.',
+        effects: { popularity: 6, reputation: 1, rivalIntensity: 1 },
+        flavor: 'A frase vira recorte nas redes ainda durante a coletiva.' },
+      { id: 'c', tone: 'aggressive', text: 'Penso que treinei demais para sair daqui sem o cinturão.',
+        effects: { popularity: 5, reputation: 0, rivalIntensity: 2 },
+        flavor: 'A determinação na voz impressiona jornalistas e fãs.' },
+    ],
+  },
+  {
+    id: 'pre_chal_gameplan',
+    contexts: ['challenger', 'world', 'continental'],
+    question: 'O campeão tem a vantagem da experiência e do cinturão. Como você planeja virar esse jogo?',
+    answers: [
+      { id: 'a', tone: 'confident', text: 'Estudei cada luta dele. Eu sei o que ele vai fazer antes de ele fazer.',
+        effects: { popularity: 5, reputation: 2, rivalIntensity: 2 },
+        flavor: 'O campeão arqueia uma sobrancelha. Promessa grande, cobrança grande.' },
+      { id: 'b', tone: 'humble', text: 'Não vou tentar ser o campeão. Vou ser a melhor versão de mim mesmo.',
+        effects: { popularity: 3, reputation: 5, rivalIntensity: 0 },
+        flavor: 'Analistas gostam da mentalidade focada no processo.' },
+      { id: 'c', tone: 'aggressive', text: 'Vou fazer ele sentir que o ringue é meu território desde o primeiro segundo.',
+        effects: { popularity: 7, reputation: -1, rivalIntensity: 2 },
+        flavor: 'A declaração incendeia a sala. O campeão responde na hora.' },
+    ],
+  },
+  {
+    id: 'pre_chal_sacrifice',
+    contexts: ['challenger'],
+    question: 'Essa oportunidade não aparece do nada. O que ficou pelo caminho nesses anos de luta?',
+    answers: [
+      { id: 'a', tone: 'humble', text: 'Muita coisa. Mas cada escolha foi consciente. Não troco por nada.',
+        effects: { popularity: 4, reputation: 6, rivalIntensity: 0 },
+        flavor: 'Silêncio na sala. A resposta toca algo genuíno em todo mundo.' },
+      { id: 'b', tone: 'diplomatic', text: 'Pergunta para minha família — eles poderiam responder melhor que eu.',
+        effects: { popularity: 3, reputation: 4, rivalIntensity: 0 },
+        flavor: 'A humanidade da resposta comove. Boa repercussão nas redes.' },
+    ],
+  },
+
+  // ── Rivalidade ──
+  {
+    id: 'pre_rival_history',
+    contexts: ['rivalry', 'world', 'continental', 'national'],
+    question: 'Vocês têm uma história juntos nesse esporte. O que essa luta resolve de uma vez por todas?',
+    answers: [
+      { id: 'a', tone: 'aggressive', text: 'Resolve quem é melhor, sem sombra de dúvida. Acabam as discussões.',
+        effects: { popularity: 7, reputation: -1, rivalIntensity: 3 },
+        flavor: 'A declaração caiu como gasolina. A sala vibra.' },
+      { id: 'b', tone: 'diplomatic', text: 'O ringue responde o que as palavras nunca vão resolver.',
+        effects: { popularity: 4, reputation: 4, rivalIntensity: 1 },
+        flavor: 'Resposta elegante. Muita coisa dita em poucas palavras.' },
+      { id: 'c', tone: 'humble', text: 'Para mim, resolve a chance de provar que minha jornada valeu.',
+        effects: { popularity: 3, reputation: 5, rivalIntensity: 1 },
+        flavor: 'A sinceridade pega a todos. Até o rival parece rever a postura.' },
+    ],
+  },
+  {
+    id: 'pre_rival_personal',
+    contexts: ['rivalry'],
+    question: 'Em algum momento essa rivalidade ficou pessoal para você — além do esporte?',
+    answers: [
+      { id: 'a', tone: 'aggressive', text: 'Ficou. Não vou fingir que não. Mas vou resolver no único lugar que importa.',
+        effects: { popularity: 6, reputation: 0, rivalIntensity: 3 },
+        flavor: 'Confissão rara. A rivalidade ganha uma nova dimensão pública.' },
+      { id: 'b', tone: 'diplomatic', text: 'Mantenho separado. É boxe. No final, respeito o que ele construiu.',
+        effects: { popularity: 2, reputation: 5, rivalIntensity: -1 },
+        flavor: 'A maturidade surpreende. Alguns na sala ficam visivelmente aliviados.' },
+      { id: 'c', tone: 'confident', text: 'Sempre foi profissional da minha parte. O problema é que ele às vezes esquece isso.',
+        effects: { popularity: 5, reputation: 1, rivalIntensity: 2 },
+        flavor: 'Indireta pesada. O rival se levanta para responder.' },
+    ],
+  },
+  {
+    id: 'pre_rival_end',
+    contexts: ['rivalry'],
+    question: 'O que precisa acontecer nessa luta para você sentir que a história entre vocês está encerrada?',
+    answers: [
+      { id: 'a', tone: 'aggressive', text: 'Ele não poder levantar quando o árbitro contar dez.',
+        effects: { popularity: 7, reputation: -2, rivalIntensity: 3 },
+        flavor: 'Declaração brutal. A promotora já prevê a repercussão.' },
+      { id: 'b', tone: 'confident', text: 'Uma vitória clara, sem margem para interpretação dos juízes.',
+        effects: { popularity: 5, reputation: 2, rivalIntensity: 2 },
+        flavor: 'Indireta a decisões polêmicas do passado. Os fãs entendem.' },
+      { id: 'c', tone: 'humble', text: 'Me dar conta de que fiz tudo que estava ao meu alcance. O resultado vem depois.',
+        effects: { popularity: 3, reputation: 5, rivalIntensity: 0 },
+        flavor: 'Resposta que foge do padrão. Respeito imediato da imprensa.' },
+    ],
+  },
+
+  // ── Unificação ──
+  {
+    id: 'pre_unif_meaning',
+    contexts: ['unification', 'world'],
+    question: 'Uma luta de unificação é algo que poucos boxeadores vivenciam. O que significa estar aqui?',
+    answers: [
+      { id: 'a', tone: 'humble', text: 'É a prova de que o caminho longo vale a pena. Não existe atalho para essa mesa.',
+        effects: { popularity: 4, reputation: 6, rivalIntensity: 0 },
+        flavor: 'Um dos momentos mais aplaudidos da coletiva.' },
+      { id: 'b', tone: 'confident', text: 'Significa que chegou a hora de encerrar o debate sobre quem domina essa divisão.',
+        effects: { popularity: 6, reputation: 2, rivalIntensity: 2 },
+        flavor: 'Declaração que vai para todos os programas esportivos.' },
+      { id: 'c', tone: 'aggressive', text: 'Significa que só um cinturão nessa divisão vai ter dono de verdade.',
+        effects: { popularity: 7, reputation: 0, rivalIntensity: 3 },
+        flavor: 'Frase incendiária. O adversário responde antes mesmo do microfone passar.' },
+    ],
+  },
+  {
+    id: 'pre_unif_pressure',
+    contexts: ['unification', 'world'],
+    question: 'Dois cinturões na mesa. A pressão dobra. Como você gerencia isso?',
+    answers: [
+      { id: 'a', tone: 'confident', text: 'A pressão é o mesmo de sempre — ela só veio com mais holofotes.',
+        effects: { popularity: 4, reputation: 3, rivalIntensity: 1 },
+        flavor: 'Analistas elogiam a frieza do atleta.' },
+      { id: 'b', tone: 'humble', text: 'Aceito a pressão como parte do privilégio de estar aqui.',
+        effects: { popularity: 3, reputation: 5, rivalIntensity: 0 },
+        flavor: 'Resposta madura. A coletiva ganha um tom mais solene.' },
+    ],
+  },
+
+  // ── Revanche ──
+  {
+    id: 'pre_rematch_diff',
+    contexts: ['rematch', 'world', 'continental', 'national'],
+    question: 'Vocês já se enfrentaram antes. O que está diferente agora do seu lado?',
+    answers: [
+      { id: 'a', tone: 'confident', text: 'Tudo. Treino, mentalidade, experiência. Ele vai encontrar outro boxeador.',
+        effects: { popularity: 5, reputation: 2, rivalIntensity: 2 },
+        flavor: 'A afirmação coloca toda a pressão em si mesmo.' },
+      { id: 'b', tone: 'humble', text: 'Aprendi muito assistindo o filme. Mas sei que ele também evoluiu.',
+        effects: { popularity: 2, reputation: 6, rivalIntensity: 0 },
+        flavor: 'A sinceridade é rara em coletivas de revanche. A imprensa valoriza.' },
+      { id: 'c', tone: 'aggressive', text: 'Na primeira luta eu não vim com tudo. Dessa vez não tem essa.',
+        effects: { popularity: 6, reputation: -1, rivalIntensity: 3 },
+        flavor: 'Implica que guardou armas antes. O adversário responde imediatamente.' },
+    ],
+  },
+  {
+    id: 'pre_rematch_plan',
+    contexts: ['rematch'],
+    question: 'Se você pudesse mudar uma coisa na primeira luta, o que seria?',
+    answers: [
+      { id: 'a', tone: 'humble', text: 'A cabeça. Entrei ansioso demais e perdi os primeiros rounds sendo quem eu não sou.',
+        effects: { popularity: 3, reputation: 5, rivalIntensity: 0 },
+        flavor: 'A autocrítica impressiona até os mais céticos.' },
+      { id: 'b', tone: 'diplomatic', text: 'O timing do meu jogo de pés no médio do combate. Deixei espaços demais.',
+        effects: { popularity: 2, reputation: 4, rivalIntensity: 0 },
+        flavor: 'Análise técnica. Treinadores na sala balançam a cabeça aprovando.' },
+      { id: 'c', tone: 'aggressive', text: 'Teria acabado mais cedo. Fui condescendente, e ele sobreviveu por isso.',
+        effects: { popularity: 5, reputation: -1, rivalIntensity: 3 },
+        flavor: 'O adversário não gostou. A coletiva esquenta.' },
+    ],
+  },
 ];
 
 // As combinações abaixo formam milhares de manchetes sem carregar milhares
@@ -1810,8 +2022,25 @@ function pickInterviewQuestions(fightResult, usedIds = []) {
   return shuffled.slice(0, 2);
 }
 
-function pickPreFightQuestions(scope, usedIds = []) {
-  const unused = PRE_FIGHT_QUESTIONS.filter(q => q.contexts.includes(scope) && !usedIds.includes(q.id));
-  const relevant = unused.length >= 2 ? unused : PRE_FIGHT_QUESTIONS.filter(q => q.contexts.includes(scope));
-  return [...relevant].sort(() => Math.random() - 0.5).slice(0, 2);
+function pickPreFightQuestions(ctx, usedIds = []) {
+  const scope = typeof ctx === 'string' ? ctx : (ctx.scope || 'national');
+  const activeCtxs = [scope];
+  if (typeof ctx === 'object') {
+    if (ctx.isChampion)    activeCtxs.push('champion_defense');
+    if (ctx.isChallenger)  activeCtxs.push('challenger');
+    if (ctx.hasRivalry)    activeCtxs.push('rivalry');
+    if (ctx.isUnification) activeCtxs.push('unification');
+    if (ctx.isRematch)     activeCtxs.push('rematch');
+  }
+  const specificTags = ['champion_defense', 'challenger', 'rivalry', 'unification', 'rematch'];
+  const matchScore = q => q.contexts.filter(c => specificTags.includes(c) && activeCtxs.includes(c)).length;
+  const matches    = q => q.contexts.some(c => activeCtxs.includes(c));
+
+  const pool   = PRE_FIGHT_QUESTIONS.filter(matches);
+  const unused = pool.filter(q => !usedIds.includes(q.id));
+  const source = unused.length >= 2 ? unused : pool;
+  // Sort by specificity (higher = more contextually relevant), shuffle ties
+  return [...source]
+    .sort((a, b) => matchScore(b) - matchScore(a) || Math.random() - 0.5)
+    .slice(0, 2);
 }

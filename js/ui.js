@@ -3960,8 +3960,19 @@ class UI {
       this.gs.save();
       const mediaScope = this._majorFightMediaScope(fight);
       if (mediaScope && !fight.preFightInterviewDone) {
-        const questions = pickPreFightQuestions(mediaScope, this.gs.getUsedInterviewQuestionIds());
-        this.show('preFightInterview', { questions, fight, mediaScope });
+        const p2   = this.gs.player;
+        const opp2 = fight.opponent;
+        const worldOrgs = ['WBC','WBA','IBF','WBO'];
+        const presserCtx = {
+          scope:         mediaScope,
+          isChampion:    (p2.belts || []).some(b => worldOrgs.includes(b)),
+          isChallenger:  !!(fight.titleBelt && !(p2.belts || []).includes(fight.titleBelt)),
+          hasRivalry:    (this.gs.rivals || []).some(r => r.fighterId === opp2.id && r.intensity >= 2),
+          isUnification: ((fight.beltStakes || []).filter(b => worldOrgs.includes(b)).length >= 2),
+          isRematch:     (p2.fightHistory || []).some(h => h.opponentId === opp2.id),
+        };
+        const questions = pickPreFightQuestions(presserCtx, this.gs.getUsedInterviewQuestionIds());
+        this.show('preFightInterview', { questions, fight, mediaScope, presserCtx });
       } else {
         this.show('preFight', { fight });
       }
@@ -4392,29 +4403,83 @@ class UI {
     return null;
   }
 
-  _render_preFightInterview({ questions, fight, mediaScope }) {
+  _render_preFightInterview({ questions, fight, mediaScope, presserCtx = {} }) {
     let current = 0;
-    const labels = {
-      national: 'COLETIVA NACIONAL',
-      continental: 'COLETIVA CONTINENTAL',
-      world: 'COLETIVA MUNDIAL',
+    const p   = this.gs.player;
+    const opp = fight.opponent;
+    const worldOrgs = ['WBC','WBA','IBF','WBO'];
+
+    const scopeLabels = {
+      national: 'COLETIVA NACIONAL', continental: 'COLETIVA CONTINENTAL', world: 'COLETIVA MUNDIAL',
     };
+    const toneLabel = t => ({ aggressive:'Agressivo', confident:'Confiante', humble:'Humilde', diplomatic:'Diplomático' }[t] || t);
+
+    // Determine roles
+    const playerBelts  = (p.belts || []).filter(b => worldOrgs.includes(b));
+    const oppBelts     = (opp.belts || []).filter(b => worldOrgs.includes(b));
+    const isPlayerChamp = playerBelts.length > 0;
+    const isOppChamp    = oppBelts.length > 0;
+
+    const playerRole = isPlayerChamp
+      ? `🏆 ${playerBelts.length > 1 ? playerBelts.join(' · ') : playerBelts[0]}`
+      : (isOppChamp ? '⚔️ DESAFIANTE' : '');
+    const oppRole = isOppChamp
+      ? `🏆 ${oppBelts.length > 1 ? oppBelts.join(' · ') : oppBelts[0]}`
+      : (isPlayerChamp ? '⚔️ DESAFIANTE' : '');
+
+    const pRecord  = `${p.wins}-${p.losses}${p.draws ? `-${p.draws}` : ''} (${p.kos} KO)`;
+    const oppRecord = `${opp.wins}-${opp.losses}${opp.draws ? `-${opp.draws}` : ''} (${opp.kos} KO)`;
+
+    // Context badges
+    const badges = [];
+    if (presserCtx.isRematch)     badges.push('<span class="presser-badge badge-rematch">🔄 REVANCHE</span>');
+    if (presserCtx.hasRivalry)    badges.push('<span class="presser-badge badge-rivalry">🔥 RIVALIDADE</span>');
+    if (presserCtx.isUnification) badges.push('<span class="presser-badge badge-unif">👑 UNIFICAÇÃO</span>');
+
+    // Fight title line
+    const beltLabel = fight.titleBelt ? `— ${fight.titleBelt.toUpperCase()} ${p.weightClassData?.name?.toUpperCase() || ''}` : '';
+
+    const presserStageHTML = `
+      <div class="presser-stage">
+        <div class="presser-fighter presser-left">
+          ${playerRole ? `<div class="presser-role ${isPlayerChamp ? 'presser-champ' : 'presser-chal'}">${playerRole}</div>` : ''}
+          <div class="presser-name">${p.displayName || p.name}</div>
+          <div class="presser-record">${pRecord}</div>
+          <div class="presser-mic">🎙️ 🎙️ 🎙️</div>
+        </div>
+        <div class="presser-center">
+          ${badges.length ? `<div class="presser-badges">${badges.join('')}</div>` : ''}
+          <div class="presser-vs">VS</div>
+        </div>
+        <div class="presser-fighter presser-right">
+          ${oppRole ? `<div class="presser-role ${isOppChamp ? 'presser-champ' : 'presser-chal'}">${oppRole}</div>` : ''}
+          <div class="presser-name">${opp.name}</div>
+          <div class="presser-record">${oppRecord}</div>
+          <div class="presser-mic">🎙️ 🎙️ 🎙️</div>
+        </div>
+      </div>`;
 
     const renderQuestion = () => {
       const q = questions[current];
       this.root.innerHTML = `
-        <div class="screen interview-screen">
+        <div class="screen interview-screen presser-screen">
+          <div class="presser-banner">
+            <span class="presser-banner-label">🎙️ ${scopeLabels[mediaScope] || 'COLETIVA PRÉ-LUTA'}</span>
+            <span class="presser-banner-sub">${beltLabel}</span>
+          </div>
+          ${presserStageHTML}
+          <div class="presser-divider"></div>
           <div class="interview-header">
-            <div class="interview-kicker">🎙️ ${labels[mediaScope] || 'COLETIVA PRÉ-LUTA'}</div>
+            <div class="interview-kicker">📰 PERGUNTA DA IMPRENSA</div>
             <div class="interview-progress">${current + 1} / ${questions.length}</div>
           </div>
           <div class="interview-card">
-            <div class="interview-journalist">📰 <em>"${q.question}"</em></div>
+            <div class="interview-journalist"><em>"${q.question}"</em></div>
             <div class="interview-answers">
               ${q.answers.map(a => `
                 <button class="interview-answer-btn" data-qid="${q.id}" data-aid="${a.id}">
                   <span class="answer-text">${a.text}</span>
-                  <span class="answer-tone tone-${a.tone}">${a.tone === 'aggressive' ? 'Agressivo' : a.tone === 'confident' ? 'Confiante' : a.tone === 'humble' ? 'Humilde' : 'Diplomático'}</span>
+                  <span class="answer-tone tone-${a.tone}">${toneLabel(a.tone)}</span>
                 </button>
               `).join('')}
             </div>
@@ -4423,14 +4488,14 @@ class UI {
 
       document.querySelectorAll('.interview-answer-btn').forEach(btn => {
         btn.onclick = () => {
-          const result = this.gs.applyInterviewAnswer(btn.dataset.qid, btn.dataset.aid, fight.opponent?.id);
+          const result = this.gs.applyInterviewAnswer(btn.dataset.qid, btn.dataset.aid, opp?.id);
           if (!result) return;
           const card = document.querySelector('.interview-card');
           card.innerHTML = `
             <div class="interview-reaction">${result.flavor}</div>
             ${result.opponentResponse ? `
               <div class="opponent-response">
-                <strong>${fight.opponent.name} responde:</strong>
+                <strong>${opp.name} responde:</strong>
                 <span>${result.opponentResponse}</span>
               </div>
             ` : ''}

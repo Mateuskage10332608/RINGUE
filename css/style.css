@@ -1022,6 +1022,51 @@ label { display: block; color: var(--muted); font-size: .85rem; margin-bottom: 4
 .eff-neg   { background: #e6394622; color: #e63946; }
 .eff-rival { background: #e6394622; color: #f4a261; }
 
+/* ── Coletiva de imprensa ───────────────────────────────── */
+.presser-screen { max-width: 720px; }
+.presser-banner {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--card2); border: 1px solid var(--border);
+  border-radius: 10px 10px 0 0; padding: 10px 18px;
+  margin-bottom: 0;
+}
+.presser-banner-label {
+  font-size: .82rem; letter-spacing: 2px; color: var(--gold); font-weight: 700; text-transform: uppercase;
+}
+.presser-banner-sub { font-size: .75rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.presser-stage {
+  display: grid; grid-template-columns: 1fr 80px 1fr;
+  background: var(--card); border: 1px solid var(--border); border-top: none;
+  border-radius: 0 0 10px 10px; padding: 20px 16px; gap: 8px; margin-bottom: 16px;
+}
+.presser-fighter { display: flex; flex-direction: column; gap: 5px; }
+.presser-left  { align-items: flex-start; text-align: left; }
+.presser-right { align-items: flex-end; text-align: right; }
+.presser-role {
+  font-size: .7rem; font-weight: 700; letter-spacing: 1px; padding: 3px 8px;
+  border-radius: 20px; text-transform: uppercase;
+}
+.presser-champ { background: #f4a26122; color: #f4a261; border: 1px solid #f4a26155; }
+.presser-chal  { background: #3498db22; color: #3498db; border: 1px solid #3498db55; }
+.presser-name  { font-size: 1rem; font-weight: 700; color: var(--text); }
+.presser-record { font-size: .78rem; color: var(--muted); }
+.presser-mic   { font-size: .7rem; letter-spacing: 2px; margin-top: 6px; opacity: .5; }
+.presser-center {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+}
+.presser-vs {
+  font-size: 1.1rem; font-weight: 900; color: var(--text2); letter-spacing: 1px;
+}
+.presser-badges { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.presser-badge {
+  font-size: .65rem; font-weight: 700; padding: 2px 7px; border-radius: 20px; white-space: nowrap;
+  letter-spacing: .5px; text-transform: uppercase;
+}
+.badge-rivalry { background: #e6394622; color: #e63946; border: 1px solid #e6394655; }
+.badge-rematch { background: #9b59b622; color: #9b59b6; border: 1px solid #9b59b655; }
+.badge-unif    { background: #f4a26122; color: #f4a261; border: 1px solid #f4a26155; }
+.presser-divider { height: 1px; background: var(--border); margin: 4px 0 16px; }
+
 /* ── Rivalidades ─────────────────────────────────────────── */
 .rivals-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
 .rival-card {
