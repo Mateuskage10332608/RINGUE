@@ -1,0 +1,52 @@
+{
+  "name": "ringue-boxing-manager",
+  "version": "0.6.0",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node tests/core.test.js",
+    "build": "npx electron-packager . RINGUE --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"node_modules|tests|dist|\\.claude\""
+  },
+  "build": {
+    "appId": "com.ringue.boxing-manager",
+    "productName": "RINGUE",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "css/**",
+      "js/**",
+      "electron/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "portable": {
+      "artifactName": "RINGUE-portable.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^24.13.3"
+  }
+}

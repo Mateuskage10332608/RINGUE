@@ -1,0 +1,19 @@
+# Node / Electron
+node_modules/
+npm-debug.log*
+
+# Build output
+../dist/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
