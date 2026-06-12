@@ -58,3 +58,6 @@ boxing-manager/
   index.html            — shell HTML
   package.json
 ```
+
+
+Feito 98.5% Sem IA (O Claude tá ali porque eu usei ele algumas vezes para debugar uma dor de cabeça ou outra que eu tive no codigo)
