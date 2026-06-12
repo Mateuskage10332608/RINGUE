@@ -102,14 +102,17 @@ class TrainingCamp {
 
   _injuryDesc(focusId) {
     const descs = {
-      conditioning: 'Sobrecarga muscular durante o condicionamento.',
-      power:        'Lesão na mão durante treino de força.',
-      technique:    'Distensão muscular durante sessão de técnica.',
-      defense:      'Contusão leve durante exercícios de esquiva.',
-      sparring:     'Corte e contusão no sparring intenso.',
-      body_work:    'Dor nas costelas após trabalho de corpo.',
-      mental:       null,
-      weight_cut:   'Desidratação severa durante o corte de peso.',
+      conditioning:  'Sobrecarga muscular durante o condicionamento.',
+      power:         'Lesão na mão durante treino de força.',
+      technique:     'Distensão muscular durante sessão de técnica.',
+      power_punches: 'Torção no pulso durante treino de socos longos.',
+      combos_hooks:  'Lesão no cotovelo durante ganchos e uppercuts.',
+      defense:       'Contusão leve durante exercícios de esquiva.',
+      sparring:      'Corte e contusão no sparring intenso.',
+      body_work:     'Dor nas costelas após trabalho de corpo.',
+      mental:        null,
+      resilience:    'Esforço excessivo durante treino de resistência.',
+      weight_cut:    'Desidratação severa durante o corte de peso.',
     };
     return descs[focusId] || 'Lesão durante o treino.';
   }

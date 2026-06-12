@@ -1600,16 +1600,17 @@ const STRATEGIES = [
 
 // Focos de treinamento
 const TRAINING_FOCUSES = [
-  { id: 'conditioning', name: 'Condicionamento Físico', attrs: ['stamina', 'speed'],       risk: 0.05 },
-  { id: 'power',        name: 'Força e Potência',       attrs: ['strength', 'chin'],        risk: 0.08 },
-  { id: 'technique',    name: 'Técnica de Boxe',        attrs: ['jab', 'precision', 'combinations'], risk: 0.03 },
-  { id: 'defense',      name: 'Defesa e Esquiva',       attrs: ['defense', 'footwork', 'reflexes'],  risk: 0.04 },
-  { id: 'sparring',     name: 'Sparring Intenso',       attrs: ['ringIQ', 'counter', 'pressure'],    risk: 0.15 },
-  { id: 'body_work',    name: 'Trabalho de Corpo',      attrs: ['bodyPunch', 'stamina'],    risk: 0.06 },
-  { id: 'mental',       name: 'Preparação Mental',      attrs: ['composure', 'courage'],   risk: 0.02 },
-  { id: 'straight',     name: 'Socos Diretos',          attrs: ['straight', 'cross'],       risk: 0.06 },
-  { id: 'resilience',   name: 'Resiliência e Queixo',   attrs: ['resilience', 'chin'],      risk: 0.07 },
-  { id: 'weight_cut',   name: 'Corte de Peso',          attrs: [],                          risk: 0.10 },
+  { id: 'conditioning',  name: 'Condicionamento Físico', attrs: ['stamina', 'speed'],                    risk: 0.05 },
+  { id: 'power',         name: 'Força e Potência',       attrs: ['strength', 'chin'],                    risk: 0.08 },
+  { id: 'technique',     name: 'Fundamentos e Jab',      attrs: ['jab', 'precision', 'distance'],        risk: 0.03 },
+  { id: 'power_punches', name: 'Socos Longos',           attrs: ['straight', 'cross'],                   risk: 0.06 },
+  { id: 'combos_hooks',  name: 'Ganchos e Uppercuts',    attrs: ['uppercut', 'combinations'],            risk: 0.07 },
+  { id: 'defense',       name: 'Defesa e Esquiva',       attrs: ['defense', 'footwork', 'reflexes'],     risk: 0.04 },
+  { id: 'sparring',      name: 'Sparring Intenso',       attrs: ['ringIQ', 'counter', 'pressure'],       risk: 0.15 },
+  { id: 'body_work',     name: 'Trabalho de Corpo',      attrs: ['bodyPunch', 'stamina'],                risk: 0.06 },
+  { id: 'mental',        name: 'Preparação Mental',      attrs: ['composure', 'courage', 'discipline'],  risk: 0.02 },
+  { id: 'resilience',    name: 'Resiliência e Queixo',   attrs: ['resilience', 'chin'],                  risk: 0.07 },
+  { id: 'weight_cut',    name: 'Corte de Peso',          attrs: [],                                      risk: 0.10 },
 ];
 
 const ACADEMY_PHILOSOPHIES = [
