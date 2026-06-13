@@ -33,6 +33,14 @@ class GameState {
     this.mediaCrisis = null;
     this.hallOfFame  = BOXING_LEGENDS.map(l => ({ ...l, inducted: true, inductedYear: l.era.split('–')[1] || '?' }));
     this.p4pRankings = [];
+    this.seasonFightLog = [];
+    this.annualAwards = JSON.parse(JSON.stringify(HISTORICAL_BOXING_AWARDS));
+    this.worldRecords = JSON.parse(JSON.stringify(HISTORICAL_BOXING_RECORDS));
+    this.eraHistory = JSON.parse(JSON.stringify(HISTORICAL_BOXING_ERAS));
+    this.historicalRankings = [{ year: 2023, historical: true, rankings: JSON.parse(JSON.stringify(HISTORICAL_ALL_TIME_RANKING)) }];
+    this.dynastyHistory = JSON.parse(JSON.stringify(HISTORICAL_DYNASTIES));
+    this.generationHistory = JSON.parse(JSON.stringify(HISTORICAL_GENERATIONS));
+    this.pendingAwardCeremony = null;
   }
 
   get date() {
@@ -59,7 +67,9 @@ class GameState {
       Object.values(fighter.divisionDefenses || {}).reduce((sum, division) =>
         sum + Object.values(division || {}).reduce((subtotal, count) => subtotal + count, 0), 0);
     const trophyPoints = (fighter.trophies || []).reduce((sum, trophy) =>
-      sum + (trophy.tier === 'national' ? 10 : trophy.tier === 'regional' ? 5 : 2), 0);
+      sum + (trophy.prestige
+        ? Math.round(trophy.prestige / 5)
+        : trophy.tier === 'national' ? 10 : trophy.tier === 'regional' ? 5 : 2), 0);
     const careerScore = Math.max(0,
       fighter.wins * 3 - fighter.losses * 2 +
       worldTitles * 130 + continentalTitles * 55 + defenses * 14 +
@@ -1125,6 +1135,7 @@ class GameState {
   }
 
   advanceAcademyWeek() {
+    if (this.pendingAwardCeremony) return { training: [], fights: [], pendingFights: [], ceremonyPending: true };
     if (!this.academy) return { training: [], fights: [], pendingFights: [] };
     const results = this._runAcademyWeek();
     this._checkActiveRosterInductions();
@@ -1481,9 +1492,16 @@ class GameState {
         ...p.beltDefenses,
       };
     }
-    for (const belt of p.superBelts || []) {
-      if (!p.superBeltHistory.some(entry => entry.belt === belt && entry.weightClass === previousId)) {
-        p.superBeltHistory.push({ belt, weightClass: previousId, year: this.year });
+    for (const superBelt of p.superBelts || []) {
+      const belt = typeof superBelt === 'string' ? superBelt : superBelt.belt;
+      const weightClass = typeof superBelt === 'string' ? previousId : superBelt.weightClass;
+      if (weightClass === previousId && !p.superBeltHistory.some(entry => entry.belt === belt && entry.weightClass === previousId)) {
+        p.superBeltHistory.push({
+          belt,
+          weightClass: previousId,
+          year: superBelt.year || this.year,
+          defenses: superBelt.defenses || p.beltDefenses?.[belt] || 10,
+        });
       }
     }
 
@@ -1505,7 +1523,6 @@ class GameState {
     p.weightClass = targetId;
     p.belts = [];
     p.beltDefenses = {};
-    p.superBelts = [];
     p.divisionRankingPenalty = direction === 'up' ? 28 : 34;
     p.weightTransition = {
       from: previousId,
@@ -2040,19 +2057,63 @@ class GameState {
 
     const rank = this.getPlayerRanking();
     const worldBelts = (p.belts || []).filter(b => WORLD_ORGS.includes(b));
-    const isChampion = worldBelts.length > 0;
+    const continentalBelts = (p.belts || []).filter(b => getBeltInfo(b).tier === 4);
+    const isWorldChampion = worldBelts.length > 0;
+    const isContinentalChampion = continentalBelts.length > 0;
+    const isChampion = isWorldChampion || isContinentalChampion;
 
     // Frequência escala com número de cinturões mundiais
     // 0 cinturões: chance padrão por ranking
     // 1 cinturão: 0.22/semana  2: 0.34  3: 0.46  4: 0.58
-    const champChance = isChampion ? 0.18 + worldBelts.length * 0.12 : 0;
+    const champChance = isWorldChampion
+      ? 0.18 + worldBelts.length * 0.12
+      : isContinentalChampion ? 0.24 : 0;
     const contenderChance = !isChampion ? (rank <= 5 ? 0.18 : rank <= 10 ? 0.12 : rank <= 20 ? 0.07 : 0) : 0;
     const weeklyChance = Math.max(champChance, contenderChance);
     if (!weeklyChance) return null;
     if (!force && Math.random() > weeklyChance) return null;
 
     // ── Campeão: desafio baseado em rankings por organização ──
-    if (isChampion) {
+    if (isContinentalChampion && !isWorldChampion) {
+      const belt = continentalBelts[0];
+      const continent = belt.split(':')[1] || NAMES[p.nationality]?.continent;
+      const pool = (this.rankings[p.weightClass] || []).filter(f =>
+        f.id !== p.id && !f.retiredAt && !f.isInjured &&
+        NAMES[f.nationality]?.continent === continent &&
+        !this.incomingChallenges.some(c => c.opponent?.id === f.id)
+      );
+      if (!pool.length) return null;
+      const opponent = pick(pool.slice(0, 12));
+      const fight = this._makeOffer(opponent, belt);
+      fight.incomingChallenge = true;
+      fight.beltStakes = [belt];
+      fight.titleBelt = belt;
+      fight.challengerPromoter = pick(PROMOTERS.filter(promoter =>
+        promoter.tier === 'continental' && promoter.scope === continent
+      )) || pick(PROMOTERS);
+      fight.promoter = fight.challengerPromoter;
+      fight.purse = Math.round(fight.purse * 1.35);
+      fight.event = this._buildFightEvent(fight);
+      const challenge = {
+        ...fight,
+        receivedWeek: this.week,
+        receivedYear: this.year,
+        expiresIn: 6,
+        status: 'pending',
+      };
+      this.incomingChallenges.unshift(challenge);
+      this.addNews({
+        headline: nl(
+          `${opponent.name} desafia ${p.name} pelo ${getBeltDisplayName(belt, { weightClass: p.weightClass })}!`,
+          `${opponent.name} challenges ${p.name} for the ${getBeltDisplayName(belt, { weightClass: p.weightClass })}!`
+        ),
+        type: 'challenge',
+        fighters: [p, opponent],
+      });
+      return challenge;
+    }
+
+    if (isWorldChampion) {
       const wc = p.weightClass;
 
       // Monta mapa: fighterId → orgs em que ele é top-contender (top-5 da org que o jogador detém)
@@ -2217,6 +2278,22 @@ class GameState {
     active.endReason = reason;
     active.endedBy = opponent?.name || null;
     active.defenses = (fighter.beltDefenses || {})[belt] || active.defenses || 0;
+  }
+
+  _awardSuperBeltIfEligible(fighter, belt, weightClass = fighter?.weightClass) {
+    if (!fighter || !WORLD_ORGS.includes(belt) || !weightClass) return null;
+    const defenses = (fighter.beltDefenses || {})[belt] || 0;
+    if (defenses < 10 || fighter.hasSuperBelt(belt, weightClass)) return null;
+    const award = { belt, weightClass, year: this.year, week: this.week, defenses };
+    fighter.superBelts = fighter.superBelts || [];
+    fighter.superBelts.push(award);
+    fighter.superBeltHistory = fighter.superBeltHistory || [];
+    if (!fighter.superBeltHistory.some(entry =>
+      entry.belt === belt && entry.weightClass === weightClass
+    )) {
+      fighter.superBeltHistory.push({ ...award });
+    }
+    return award;
   }
 
   _canOfferUnification() {
@@ -2741,6 +2818,7 @@ class GameState {
 
   // Time progression
   advanceWeeks(n = 1, options = {}) {
+    if (this.pendingAwardCeremony) return { advanced: false, ceremonyPending: true };
     this.week += n;
     while (this.week > 52) {
       this.week -= 52;
@@ -2802,6 +2880,8 @@ class GameState {
   }
 
   _endOfYear() {
+    this._closeBoxingSeason(this.year - 1);
+
     // Envelhece todos
     for (const f of this.allFighters) f.birthday();
     if (this.player) this.player.birthday();
@@ -2863,6 +2943,258 @@ class GameState {
     }
 
     this.rebuildRankings();
+  }
+
+  _recordSeasonFight(fighterA, fighterB, result, options = {}) {
+    if (!fighterA || !fighterB || !result) return;
+    const winner = result.winnerFighter;
+    const loser = result.loserFighter;
+    this.seasonFightLog.push({
+      year: this.year, week: this.week,
+      fighterAId: fighterA.id, fighterAName: fighterA.name,
+      fighterBId: fighterB.id, fighterBName: fighterB.name,
+      winnerId: winner?.id || null, winnerName: winner?.name || null,
+      loserId: loser?.id || null, loserName: loser?.name || null,
+      method: result.method, round: result.round || 0,
+      isDraw: !!result.isDraw, isNoContest: !!result.isNoContest,
+      titleBelts: [...(options.titleBelts || [])],
+      rankingGap: winner && loser ? Math.max(0, (winner.ranking || 100) - (loser.ranking || 100)) : 0,
+      excitement: options.excitement || (result.isDraw ? 82 : result.isControversial ? 88 : isKnockoutResult(result.method) ? 80 : 55),
+      attendance: options.attendance || 0,
+      gate: options.gate || 0,
+    });
+    if (this.seasonFightLog.length > 2500) this.seasonFightLog.shift();
+  }
+
+  _closeBoxingSeason(year) {
+    if (this.annualAwards.some(entry => entry.year === year)) return;
+    const fights = this.seasonFightLog.filter(entry => entry.year === year && !entry.isNoContest);
+    if (!fights.length) return;
+    const fighters = [...this.allFighters, this.player].filter(Boolean);
+    const byId = new Map(fighters.map(fighter => [fighter.id, fighter]));
+    const stats = new Map();
+    const getStats = id => {
+      if (!stats.has(id)) stats.set(id, { wins:0, losses:0, kos:0, titleWins:0 });
+      return stats.get(id);
+    };
+    for (const fight of fights) {
+      if (!fight.winnerId) continue;
+      const winner = getStats(fight.winnerId);
+      getStats(fight.loserId).losses++;
+      winner.wins++;
+      if (isKnockoutResult(fight.method)) winner.kos++;
+      if (fight.titleBelts.some(belt => WORLD_ORGS.includes(belt))) winner.titleWins++;
+    }
+    const scored = [...stats.entries()].map(([id, season]) => ({
+      fighter: byId.get(id), season,
+      score: season.wins * 12 + season.kos * 6 + season.titleWins * 35 + (byId.get(id) ? this._calcGoatScore(byId.get(id)) * 0.08 : 0),
+    })).filter(entry => entry.fighter).sort((a,b) => b.score - a.score);
+    const snapshot = entry => entry ? ({
+      id:entry.fighter.id, name:entry.fighter.name, record:entry.fighter.record,
+      weightClass:entry.fighter.weightClass, seasonWins:entry.season.wins,
+      seasonKOs:entry.season.kos, seasonTitleWins:entry.season.titleWins,
+    }) : null;
+    const bestFight = [...fights].sort((a,b) => b.excitement - a.excitement)[0] || null;
+    const bestKo = fights.filter(fight => isKnockoutResult(fight.method)).sort((a,b) => (a.round || 99) - (b.round || 99))[0] || null;
+    const upset = fights.filter(fight => fight.winnerId && fight.rankingGap > 0).sort((a,b) => b.rankingGap - a.rankingGap)[0] || null;
+    const prospect = scored.find(entry => entry.fighter.age <= 24 || (entry.fighter.careerStartYear || 0) >= year - 2);
+    const comeback = scored.find(entry => entry.fighter.age >= 32 && entry.season.wins >= 1 && entry.fighter.losses >= 2);
+    const awards = {
+      fighterOfYear:snapshot(scored[0]), fightOfYear:bestFight, knockoutOfYear:bestKo,
+      prospectOfYear:snapshot(prospect), upsetOfYear:upset, comebackOfYear:snapshot(comeback),
+    };
+    this.annualAwards.unshift({ year, awards });
+    this.pendingAwardCeremony = { year, awards:JSON.parse(JSON.stringify(awards)), currentIndex:0 };
+    const awardPairs = [
+      [awards.fighterOfYear, 'fighter_of_year', 'Lutador do Ano'],
+      [awards.prospectOfYear, 'prospect_of_year', 'Revelação do Ano'],
+      [awards.comebackOfYear, 'comeback_of_year', 'Retorno do Ano'],
+    ];
+    for (const [award, type, name] of awardPairs) {
+      const fighter = byId.get(award?.id);
+      if (fighter) {
+        fighter.careerAwards = fighter.careerAwards || [];
+        fighter.careerAwards.push({ year, type, name });
+      }
+    }
+    this._updateWorldHistory(year, fights, fighters, scored[0]?.fighter);
+    this._snapshotHistoricalRankings(year, fighters);
+    this._updateDynasties(year, fighters);
+    this._updateGenerationHistory(year);
+    this.seasonFightLog = this.seasonFightLog.filter(entry => entry.year > year);
+  }
+
+  _historicalFighterSnapshot(fighter, rank = null) {
+    const archivedDef = Object.values(fighter?.divisionDefenses || {}).reduce((sum, division) =>
+      sum + Object.values(division || {}).reduce((subtotal, count) => subtotal + count, 0), 0);
+    const titleDefenses = Object.values(fighter?.beltDefenses || {}).reduce((sum, count) => sum + count, 0) + archivedDef;
+    const divisions = new Set((fighter?.worldTitleHistory || []).map(entry => entry.weightClass)).size;
+    return {
+      rank,
+      fighterId: fighter.id,
+      name: fighter.name,
+      nationality: fighter.nationality,
+      weightClass: fighter.weightClass,
+      record: fighter.record,
+      wins: fighter.wins || 0,
+      losses: fighter.losses || 0,
+      kos: (fighter.kos || 0) + (fighter.tkos || 0),
+      goatScore: this._calcGoatScore(fighter),
+      titleDefenses,
+      worldTitles: fighter.totalTitleWins || 0,
+      divisions,
+      active: !fighter.retiredAt,
+    };
+  }
+
+  _snapshotHistoricalRankings(year, fighters = this._everyFighter()) {
+    if (this.historicalRankings.some(entry => entry.year === year)) return;
+    const activeSnapshots = fighters
+      .filter(Boolean)
+      .map(fighter => this._historicalFighterSnapshot(fighter))
+      .filter(entry => entry.goatScore > 0);
+    const legends = (this.hallOfFame || []).map(legend => ({
+      rank:null, fighterId:legend.id, name:legend.name, nationality:legend.nationality,
+      weightClass:legend.weightClass, record:legend.record, wins:legend.wins || 0,
+      losses:legend.losses || 0, kos:legend.kos || 0, goatScore:legend.goatScore || 0,
+      titleDefenses:legend.titleDefs || 0, worldTitles:(legend.belts || []).length,
+      divisions:legend.divisions || 0, active:false,
+    }));
+    const bestById = new Map();
+    for (const entry of [...legends, ...activeSnapshots]) {
+      const previous = bestById.get(entry.fighterId);
+      if (!previous || entry.goatScore > previous.goatScore) bestById.set(entry.fighterId, entry);
+    }
+    const rankings = [...bestById.values()]
+      .sort((a,b) => b.goatScore-a.goatScore)
+      .slice(0, 25)
+      .map((entry,index) => ({ ...entry, rank:index+1 }));
+    this.historicalRankings.unshift({ year, rankings });
+  }
+
+  _updateDynasties(year, fighters = this._everyFighter()) {
+    const champions = fighters.filter(fighter =>
+      fighter && !fighter.retiredAt && (fighter.belts || []).some(belt => WORLD_ORGS.includes(belt))
+    );
+    for (const champion of champions) {
+      const defenses = this._historicalFighterSnapshot(champion).titleDefenses;
+      const worldBelts = (champion.belts || []).filter(belt => WORLD_ORGS.includes(belt)).length;
+      if (defenses < 5 && worldBelts < 3) continue;
+      let dynasty = this.dynastyHistory.find(entry =>
+        !entry.historical && entry.leaderId === champion.id && entry.weightClass === champion.weightClass
+      );
+      if (!dynasty) {
+        dynasty = {
+          id:`dynasty_${champion.id}_${champion.weightClass}_${year}`,
+          leaderId:champion.id, leader:champion.name, weightClass:champion.weightClass,
+          startYear:year, endYear:year, seasons:1, peakScore:this._calcGoatScore(champion),
+          defenses, label:worldBelts >= 4 ? 'Dinastia Indiscutível' : defenses >= 10 ? 'Dinastia Lendária' : 'Dinastia Mundial',
+        };
+        this.dynastyHistory.unshift(dynasty);
+      } else {
+        dynasty.endYear = year;
+        dynasty.seasons = dynasty.endYear-dynasty.startYear+1;
+        dynasty.peakScore = Math.max(dynasty.peakScore, this._calcGoatScore(champion));
+        dynasty.defenses = Math.max(dynasty.defenses, defenses);
+      }
+    }
+  }
+
+  _updateGenerationHistory(year) {
+    const startYear = Math.floor(year / 5) * 5;
+    const endYear = startYear + 4;
+    const snapshots = (this.historicalRankings || []).filter(entry => entry.year >= startYear && entry.year <= year);
+    if (!snapshots.length) return;
+    const leaderScores = new Map();
+    for (const snapshot of snapshots) for (const fighter of (snapshot.rankings || []).slice(0, 10)) {
+      const current = leaderScores.get(fighter.fighterId) || { name:fighter.name, score:0, appearances:0 };
+      current.score += fighter.goatScore || 0;
+      current.appearances++;
+      leaderScores.set(fighter.fighterId, current);
+    }
+    const leaders = [...leaderScores.values()].sort((a,b) => b.score-a.score).slice(0, 3).map(entry => entry.name);
+    const topSnapshots = snapshots.flatMap(entry => (entry.rankings || []).slice(0, 5));
+    const avgDefenses = topSnapshots.length ? topSnapshots.reduce((sum,entry) => sum+(entry.titleDefenses||0),0)/topSnapshots.length : 0;
+    const avgKOs = topSnapshots.length ? topSnapshots.reduce((sum,entry) => sum+(entry.kos||0),0)/topSnapshots.length : 0;
+    const multiDivision = topSnapshots.filter(entry => entry.divisions >= 2).length;
+    const label = avgDefenses >= 10 ? 'Geração das Dinastias'
+      : multiDivision >= Math.max(2, topSnapshots.length * 0.25) ? 'Geração Multidivisional'
+      : avgKOs >= 20 ? 'Geração dos Nocauteadores' : 'Geração de Transição';
+    const theme = label === 'Geração das Dinastias' ? 'Longos reinados e campeões dominantes'
+      : label === 'Geração Multidivisional' ? 'Campeões perseguindo legado em múltiplas categorias'
+      : label === 'Geração dos Nocauteadores' ? 'Poder, riscos e grandes finalizações'
+      : 'Renovação dos rankings e surgimento de novos protagonistas';
+    const existing = this.generationHistory.find(entry => !entry.historical && entry.startYear === startYear);
+    const generation = { id:`generation_${startYear}`, startYear, endYear:Math.min(year,endYear), label, theme, leaders };
+    if (existing) Object.assign(existing, generation);
+    else this.generationHistory.unshift(generation);
+  }
+
+  getHistoricalComparison(fighterId, opponentId) {
+    const findSnapshot = id => {
+      const live = this._everyFighter().find(fighter => String(fighter.id) === String(id));
+      if (live) return this._historicalFighterSnapshot(live);
+      const legend = (this.hallOfFame || []).find(entry => String(entry.id) === String(id));
+      return legend ? {
+        fighterId:legend.id, name:legend.name, record:legend.record, weightClass:legend.weightClass,
+        goatScore:legend.goatScore || 0, titleDefenses:legend.titleDefs || 0,
+        worldTitles:(legend.belts || []).length, divisions:legend.divisions || 0,
+        wins:legend.wins || 0, kos:legend.kos || 0,
+      } : null;
+    };
+    const a = findSnapshot(fighterId);
+    const b = findSnapshot(opponentId);
+    if (!a || !b) return null;
+    const metrics = ['goatScore','titleDefenses','worldTitles','divisions','wins','kos'];
+    const scoreA = metrics.reduce((sum,key) => sum + (a[key] > b[key] ? 1 : a[key] === b[key] ? 0.5 : 0), 0);
+    const scoreB = metrics.length-scoreA;
+    return { a, b, scoreA, scoreB, verdict:scoreA === scoreB ? 'Legados equilibrados' : scoreA > scoreB ? `${a.name} lidera a comparação` : `${b.name} lidera a comparação` };
+  }
+
+  _updateWorldHistory(year, fights, fighters, seasonLeader) {
+    const totalDef = fighter => Object.values(fighter?.beltDefenses || {}).reduce((sum,n) => sum + n, 0) +
+      Object.values(fighter?.divisionDefenses || {}).reduce((sum,division) => sum + Object.values(division || {}).reduce((a,b) => a+b,0), 0);
+    const candidates = {
+      careerWins:[...fighters].sort((a,b) => b.wins-a.wins)[0],
+      careerKOs:[...fighters].sort((a,b) => (b.kos+b.tkos)-(a.kos+a.tkos))[0],
+      titleDefenses:[...fighters].sort((a,b) => totalDef(b)-totalDef(a))[0],
+      goatScore:[...fighters].sort((a,b) => this._calcGoatScore(b)-this._calcGoatScore(a))[0],
+    };
+    const values = {
+      careerWins:candidates.careerWins?.wins || 0,
+      careerKOs:(candidates.careerKOs?.kos || 0)+(candidates.careerKOs?.tkos || 0),
+      titleDefenses:totalDef(candidates.titleDefenses),
+      goatScore:candidates.goatScore ? this._calcGoatScore(candidates.goatScore) : 0,
+    };
+    for (const key of Object.keys(candidates)) if (values[key] > (this.worldRecords[key]?.value || 0)) {
+      this.worldRecords[key] = { value:values[key], holder:candidates[key].name, fighterId:candidates[key].id, year };
+    }
+    for (const [key, field] of [['attendance','attendance'],['gate','gate']]) {
+      const best = [...fights].sort((a,b) => b[field]-a[field])[0];
+      if (best?.[field] > (this.worldRecords[key]?.value || 0)) this.worldRecords[key] = {
+        value:best[field], holder:`${best.fighterAName} vs ${best.fighterBName}`, year,
+      };
+    }
+    const leader = [...fighters].filter(f => !f.retiredAt && f.totalTitleWins > 0)
+      .sort((a,b) => this._calcGoatScore(b)-this._calcGoatScore(a))[0] || seasonLeader;
+    if (!leader) return;
+    const current = this.eraHistory[0];
+    if (current && !current.historical && current.leaderId === leader.id) {
+      current.endYear = year; current.years = current.endYear-current.startYear+1;
+      current.peakScore = Math.max(current.peakScore, this._calcGoatScore(leader));
+    } else {
+      this.eraHistory.unshift({
+        leaderId:leader.id, leader:leader.name, weightClass:leader.weightClass,
+        startYear:year, endYear:year, years:1, peakScore:this._calcGoatScore(leader),
+        label:leader.losses === 0 ? 'Era Invicta' : (leader.belts || []).filter(b => WORLD_ORGS.includes(b)).length >= 3 ? 'Era Indiscutível' : 'Era de Domínio',
+      });
+    }
+  }
+
+  completeAwardCeremony() {
+    if (!this.pendingAwardCeremony) return false;
+    this.pendingAwardCeremony = null;
+    return true;
   }
 
   _tickNpcConditioning(weeks) {
@@ -3003,11 +3335,12 @@ class GameState {
     const divs        = new Set((fighter.worldTitleHistory || []).map(e => e.weightClass)).size;
     const koPct       = fighter.koPct || 0;
     // Hall da Fama: pelo menos 1 título mundial + 5 defesas, ou múltiplas divisões, ou longa carreira com títulos
-    const eligible = worldTitles >= 1 && (totalDef >= 5 || divs >= 2 || (fighter.wins || 0) >= 35);
+    const goatScore = this._calcGoatScore(fighter);
+    const eligible = goatScore >= 800 &&
+      worldTitles >= 1 && (totalDef >= 5 || divs >= 2 || (fighter.wins || 0) >= 35);
     if (!eligible) return;
     const already = (this.hallOfFame || []).some(e => e.id === fighter.id);
     if (already) return;
-    const goatScore = this._calcGoatScore(fighter);
     this.hallOfFame = this.hallOfFame || [];
     this.hallOfFame.push({
       id:           fighter.id,
@@ -3119,6 +3452,10 @@ class GameState {
         fb.markTraining();
 
         const r = sim.finalResult;
+        this._recordSeasonFight(fa, fb, r, {
+          titleBelts: contestedBelts,
+          attendance: Math.min(320000, Math.round(12000 + ((fa.popularity || 0) + (fb.popularity || 0)) * 900)),
+        });
         if (r && !r.isDraw && !r.isNoContest) {
           this.worldSimFights.push({ fa, fb, result: r });
           this.addNews({
@@ -3404,6 +3741,11 @@ class GameState {
 
     const fight = this.nextFight;
     if (fight?.event) this._processFightEvent(fight, r);
+    this._recordSeasonFight(this.player, fight?.opponent, r, {
+      titleBelts: fight?.titleBelts || (fight?.titleBelt ? [fight.titleBelt] : []),
+      attendance: fight?.event?.attendance || 0,
+      gate: fight?.event?.gate || 0,
+    });
 
     // Belt / Trophy transfer: only the specific contested title changes hands
     if (fight?.titleBelt && r && !r.isDraw && !r.isNoContest) {
@@ -3521,9 +3863,7 @@ class GameState {
           }
         } else {
           const defs = this.player.beltDefenses[tb];
-          if (defs === 10 && !(this.player.superBelts || []).includes(tb)) {
-            this.player.superBelts = this.player.superBelts || [];
-            this.player.superBelts.push(tb);
+          if (this._awardSuperBeltIfEligible(this.player, tb)) {
             this.addNews({
               headline: nl(`🌟 LENDA! ${this.player.name} completa 10 defesas do ${getBeltDisplayName(tb, { weightClass: this.player.weightClass })} e recebe o Super-Cinturão!`, `🌟 LEGEND! ${this.player.name} completes 10 defenses of the ${getBeltDisplayName(tb, { weightClass: this.player.weightClass })} and receives the Super Belt!`),
               type: 'title_change', fighters: [this.player],
@@ -4110,10 +4450,10 @@ class GameState {
     if (wins < 2) return null;
 
     const tier  = (rank && rank <= 20) ? 'regional' : 'local';
-    const names = tier === 'regional'
-      ? ['Torneio Regional', 'Copa Regional', 'Grand Prix Regional']
-      : ['Torneio Local', 'Copa Local', 'Circuito Amador'];
-    const name  = names[Math.floor(Math.random() * names.length)];
+    const name = getBeltDisplayName(`${tier}:${p.nationality}`, {
+      year: this.year,
+      weightClass: p.weightClass,
+    });
 
     const size  = tier === 'regional' ? 8 : 4; // 8-man or 4-man bracket
     const rounds = size === 8
@@ -4133,6 +4473,13 @@ class GameState {
       rounds,
       pursePerFight,
       winnerPrize: pursePerFight * size,
+      trophy: {
+        id: `tournament:${tier}:${p.nationality}:${this.year}:${Date.now()}`,
+        type: 'tournament_champion',
+        icon: tier === 'regional' ? '🏆' : '🥇',
+        name: `${name} ${this.year}`,
+        prestige: tier === 'regional' ? 80 : 35,
+      },
       expiresWeek: this.week + 3,
     };
 
@@ -4182,10 +4529,19 @@ class GameState {
       id: offer.id,
       name: offer.name,
       tier: offer.tier,
+      weightClass: offer.weightClass,
+      size: offer.size,
       rounds: offer.rounds,
       currentRound: 0,
       pursePerFight: offer.pursePerFight,
       winnerPrize: offer.winnerPrize,
+      trophy: offer.trophy || {
+        id: `tournament:${offer.tier}:${this.year}:${offer.id}`,
+        type: 'tournament_champion',
+        icon: offer.tier === 'regional' ? '🏆' : '🥇',
+        name: `${offer.name} ${this.year}`,
+        prestige: offer.tier === 'regional' ? 80 : 35,
+      },
       bracket,
       playerMatchupIdx,
     };
@@ -4274,20 +4630,36 @@ class GameState {
       p.money = (p.money || 0) + t.winnerPrize;
       if (!p.trophies) p.trophies = [];
       p.trophies.push({
-        tier: t.tier, scope: t.tier,
-        name: t.name,
+        id: t.trophy?.id || `tournament:${t.id}:${this.year}`,
+        tier: t.tier,
+        scope: t.tier,
+        type: 'tournament_champion',
+        icon: t.trophy?.icon || (t.tier === 'regional' ? '🏆' : '🥇'),
+        name: t.trophy?.name || `${t.name} ${this.year}`,
         year: this.year,
         weightClass: t.weightClass,
         isTournament: true,
+        prestige: t.trophy?.prestige || (t.tier === 'regional' ? 80 : 35),
+        bracketSize: t.size || (t.tier === 'regional' ? 8 : 4),
       });
-      p.popularity = Math.min(100, (p.popularity || 0) + (t.tier === 'regional' ? 8 : 4));
+      const prestige = t.trophy?.prestige || (t.tier === 'regional' ? 80 : 35);
+      p.popularity = Math.min(100, (p.popularity || 0) + (t.tier === 'regional' ? 10 : 5));
+      p.reputation = Math.min(100, (p.reputation || 0) + (t.tier === 'regional' ? 8 : 4));
+      p.tournamentWins = (p.tournamentWins || 0) + 1;
+      p.tournamentPrestige = (p.tournamentPrestige || 0) + prestige;
       this.addNews({
         headline: nl(`🏆 ${p.name} vence o ${t.name} e conquista o título!`, `🏆 ${p.name} wins the ${t.name} and claims the title!`),
         type: 'title_change', fighters: [p],
       });
       const completedName = t.name;
       this.activeTournament = null;
-      return { type: 'tournament-win', name: completedName, prize: t.winnerPrize };
+      return {
+        type: 'tournament-win',
+        name: completedName,
+        prize: t.winnerPrize,
+        trophy: t.trophy?.name || `${completedName} ${this.year}`,
+        prestige,
+      };
     }
 
     // Advance to next round: build next round matchups from winners
@@ -4320,7 +4692,7 @@ class GameState {
   save(slot) {
     slot = slot || this.currentSlot || 1;
     const data = {
-      saveVersion: 4,
+      saveVersion: 5,
       gameMode:    this.gameMode,
       academy:     this.academy,
       academyRecruitCandidates: this.academyRecruitCandidates,
@@ -4334,6 +4706,7 @@ class GameState {
       mediaCooldowns:  this.mediaCooldowns,
       mediaHistory:    this.mediaHistory,
       mediaCrisis:     this.mediaCrisis,
+      hallOfFame:      this.hallOfFame,
       allFighters: this.allFighters.map(f => this._npcJSON(f)),
       availableFights: this.availableFights.map(f => this._serializeFight(f)),
       contractOffers: this.contractOffers,
@@ -4344,6 +4717,14 @@ class GameState {
       trainingState: this.trainingState,
       lastFightResult: this._serializeFightSummary(this.lastFightResult),
       lastFightPayout: this.lastFightPayout,
+      seasonFightLog: this.seasonFightLog,
+      annualAwards: this.annualAwards,
+      worldRecords: this.worldRecords,
+      eraHistory: this.eraHistory,
+      historicalRankings: this.historicalRankings,
+      dynastyHistory: this.dynastyHistory,
+      generationHistory: this.generationHistory,
+      pendingAwardCeremony: this.pendingAwardCeremony,
     };
     const json = JSON.stringify(data);
 
@@ -4415,12 +4796,28 @@ class GameState {
       this.mediaCooldowns  = data.mediaCooldowns  || {};
       this.mediaHistory    = data.mediaHistory    || [];
       this.mediaCrisis     = data.mediaCrisis     || null;
+      this.hallOfFame = data.hallOfFame || BOXING_LEGENDS.map(l => ({
+        ...l, inducted: true, inductedYear: l.era.split('–')[1] || '?',
+      }));
       this.trainingState = data.trainingState || null;
       this.lastFightResult = data.lastFightResult || null;
       this.lastFightPayout = data.lastFightPayout || 0;
       this.contractOffers = data.contractOffers || [];
       this.tournamentOffers = data.tournamentOffers || [];
       this.activeTournament = data.activeTournament || null;
+      this.seasonFightLog = data.seasonFightLog || [];
+      this.annualAwards = data.annualAwards || JSON.parse(JSON.stringify(HISTORICAL_BOXING_AWARDS));
+      this.worldRecords = {
+        ...JSON.parse(JSON.stringify(HISTORICAL_BOXING_RECORDS)),
+        ...(data.worldRecords || {}),
+      };
+      this.eraHistory = data.eraHistory || JSON.parse(JSON.stringify(HISTORICAL_BOXING_ERAS));
+      this.historicalRankings = data.historicalRankings || [{
+        year: 2023, historical: true, rankings: JSON.parse(JSON.stringify(HISTORICAL_ALL_TIME_RANKING)),
+      }];
+      this.dynastyHistory = data.dynastyHistory || JSON.parse(JSON.stringify(HISTORICAL_DYNASTIES));
+      this.generationHistory = data.generationHistory || JSON.parse(JSON.stringify(HISTORICAL_GENERATIONS));
+      this.pendingAwardCeremony = data.pendingAwardCeremony || null;
 
       this.allFighters = (data.allFighters || []).map(d => Fighter.fromJSON(d));
       this.player      = data.player ? Fighter.fromJSON(data.player) : null;

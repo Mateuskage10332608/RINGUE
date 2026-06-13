@@ -901,10 +901,10 @@ const EVENT_ARENAS = {
     { name: 'Coliseu Continental', capacity: 70000, ticket: 250, look: 'coliseum' },
   ],
   world: [
-    { name: 'International Fight Arena', capacity: 80000, ticket: 290, look: 'international' },
-    { name: 'Global Boxing Dome', capacity: 95000, ticket: 340, look: 'global' },
-    { name: 'Champions Stadium', capacity: 115000, ticket: 410, look: 'champions' },
-    { name: 'Grand World Coliseum', capacity: 140000, ticket: 500, look: 'world' },
+    { name: 'International Fight Arena', capacity: 90000, ticket: 285, look: 'international' },
+    { name: 'Global Boxing Dome', capacity: 135000, ticket: 335, look: 'global' },
+    { name: 'Champions Megastadium', capacity: 210000, ticket: 405, look: 'champions' },
+    { name: 'Grand World Coliseum', capacity: 320000, ticket: 480, look: 'world' },
   ],
 };
 
@@ -2280,6 +2280,57 @@ const BOXING_LEGENDS = [
     goatScore: 1620,
     highlights: ['13 defesas de título mundial', 'Dois reinados como campeã unificada', 'Primeira campeã mundial africana dos médios'],
   },
+];
+
+const HISTORICAL_BOXING_RECORDS = {
+  careerWins:    { value: 61, holder: 'Esteban "El Veloz" Vargas', year: 2001 },
+  careerKOs:     { value: 43, holder: 'Marcus "Iron" Rocha', year: 1992 },
+  titleDefenses: { value: 25, holder: 'Marcus "Iron" Rocha', year: 1988 },
+  goatScore:     { value: 2180, holder: 'Marcus "Iron" Rocha', year: 1992 },
+  attendance:    { value: 187400, holder: 'Rocha vs. Okafor III', year: 1987 },
+  gate:          { value: 82400000, holder: 'Volkov vs. Diallo', year: 2009 },
+};
+
+const HISTORICAL_BOXING_ERAS = [
+  { leaderId: 'legend_southpaw_queen', leader: 'Amara "Southpaw Queen" Diallo', weightClass: 'middle', startYear: 2010, endYear: 2016, years: 7, peakScore: 1620, label: 'Era de Domínio', historical: true },
+  { leaderId: 'legend_tundra', leader: 'Sergei "Tundra" Volkov', weightClass: 'lheavy', startYear: 2004, endYear: 2009, years: 6, peakScore: 1820, label: 'Era Indiscutível', historical: true },
+  { leaderId: 'legend_shadowhand', leader: 'Kofi "Shadow Hand" Mensah', weightClass: 'welter', startYear: 1997, endYear: 2003, years: 7, peakScore: 1740, label: 'Era de Domínio', historical: true },
+  { leaderId: 'legend_veloz', leader: 'Esteban "El Veloz" Vargas', weightClass: 'light', startYear: 1989, endYear: 1996, years: 8, peakScore: 1950, label: 'Era Técnica', historical: true },
+  { leaderId: 'legend_iron_marcus', leader: 'Marcus "Iron" Rocha', weightClass: 'heavy', startYear: 1981, endYear: 1988, years: 8, peakScore: 2180, label: 'Era Indiscutível', historical: true },
+];
+
+const HISTORICAL_BOXING_AWARDS = [
+  { year: 2023, historical: true, awards: { fighterOfYear:{ name:'Darnell "North Star" Wright' }, fightOfYear:{ fighterAName:'Darnell Wright', fighterBName:'Emeka Olajide' }, knockoutOfYear:{ winnerName:'Emeka Olajide' }, prospectOfYear:{ name:'Ryota Teraji' }, upsetOfYear:{ winnerName:'Luis Navarro' }, comebackOfYear:{ name:'Callum Cooper' } } },
+  { year: 2022, historical: true, awards: { fighterOfYear:{ name:'Naoya Inoue' }, fightOfYear:{ fighterAName:'Naoya Inoue', fighterBName:'Manny Gaballo' }, knockoutOfYear:{ winnerName:'Lovemore Lerena' }, prospectOfYear:{ name:'Doston Jalolov' }, upsetOfYear:{ winnerName:'Sipho Mthalane' }, comebackOfYear:{ name:'Sergey Lebedev' } } },
+  { year: 2021, historical: true, awards: { fighterOfYear:{ name:'Amara Diallo' }, fightOfYear:{ fighterAName:'Amara Diallo', fighterBName:'Aisha Mensah' }, knockoutOfYear:{ winnerName:'Efe Ahmed' }, prospectOfYear:{ name:'Hasanboy Madrimov' }, upsetOfYear:{ winnerName:'Carlos Cardoso' }, comebackOfYear:{ name:'Michael Wilson' } } },
+];
+
+const HISTORICAL_ALL_TIME_RANKING = BOXING_LEGENDS
+  .slice()
+  .sort((a, b) => b.goatScore - a.goatScore)
+  .map((legend, index) => ({
+    rank: index + 1,
+    fighterId: legend.id,
+    name: legend.name,
+    weightClass: legend.weightClass,
+    record: legend.record,
+    goatScore: legend.goatScore,
+    titleDefenses: legend.titleDefs,
+    divisions: legend.divisions,
+    era: legend.era,
+    historical: true,
+  }));
+
+const HISTORICAL_DYNASTIES = [
+  { id:'dynasty_iron', leaderId:'legend_iron_marcus', leader:'Marcus "Iron" Rocha', weightClass:'heavy', startYear:1981, endYear:1988, seasons:8, peakScore:2180, defenses:25, label:'Dinastia de Ferro', historical:true },
+  { id:'dynasty_veloz', leaderId:'legend_veloz', leader:'Esteban "El Veloz" Vargas', weightClass:'light', startYear:1987, endYear:1996, seasons:10, peakScore:1950, defenses:18, label:'Dinastia Técnica', historical:true },
+  { id:'dynasty_tundra', leaderId:'legend_tundra', leader:'Sergei "Tundra" Volkov', weightClass:'lheavy', startYear:2002, endYear:2009, seasons:8, peakScore:1820, defenses:16, label:'Dinastia Indiscutível', historical:true },
+];
+
+const HISTORICAL_GENERATIONS = [
+  { id:'generation_2010s', startYear:2010, endYear:2019, label:'Geração Global', theme:'Técnica, mobilidade e campeões multidivisionais', leaders:['Amara "Southpaw Queen" Diallo'], historical:true },
+  { id:'generation_2000s', startYear:2000, endYear:2009, label:'Geração da Unificação', theme:'Grandes unificações e domínio de campeões indiscutíveis', leaders:['Sergei "Tundra" Volkov','Kofi "Shadow Hand" Mensah'], historical:true },
+  { id:'generation_1990s', startYear:1990, endYear:1999, label:'Geração de Ouro', theme:'Profundidade técnica e rivalidades entre divisões', leaders:['Esteban "El Veloz" Vargas','Eduardo "Manila Storm" Santos'], historical:true },
 ];
 
 const FIGHT_METHOD_GROUPS = {

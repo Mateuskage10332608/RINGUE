@@ -1,6 +1,6 @@
 {
   "name": "ringue-boxing-manager",
-  "version": "0.6.0",
+  "version": "1.4.0",
   "private": true,
   "main": "electron/main.js",
   "scripts": {

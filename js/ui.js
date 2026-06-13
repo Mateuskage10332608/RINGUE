@@ -12,7 +12,23 @@ class UI {
     this.root = document.getElementById('app');
   }
 
+  _replaceGameState(nextState) {
+    this.gs = nextState;
+    this.newsGen = new NewsGenerator(nextState);
+    window.gameState = nextState;
+    window.ui = this;
+    if (typeof globalThis !== 'undefined') globalThis.gameState = nextState;
+    this._pendingFight = null;
+    this._pendingStrategy = 'adapt';
+    this._trainFocuses = [];
+    return nextState;
+  }
+
   show(screenId, data = {}) {
+    if (this.gs.pendingAwardCeremony && !['annualAwardsCeremony', 'mainMenu'].includes(screenId)) {
+      screenId = 'annualAwardsCeremony';
+      data = {};
+    }
     if (screenId === 'careerHub' && this.gs.player?.retiredAt) {
       screenId = 'retirement';
       data = {
@@ -76,10 +92,15 @@ class UI {
       el.onclick = (e) => {
         if (e.target.closest('.slot-delete')) return;
         if (s.empty) {
-          this.gs.currentSlot = s.slot;
+          const freshState = this._replaceGameState(new GameState());
+          freshState.currentSlot = s.slot;
           this.show('modeSelect');
         } else {
-          if (this.gs.load(s.slot)) this.show(this.gs.gameMode === 'academy' ? 'academyHub' : 'careerHub');
+          const slotState = new GameState();
+          if (slotState.load(s.slot)) {
+            this._replaceGameState(slotState);
+            this.show(slotState.gameMode === 'academy' ? 'academyHub' : 'careerHub');
+          }
         }
       };
     });
@@ -117,7 +138,7 @@ class UI {
         <li>Transição Atleta → Academia com bônus de legado</li>
       </ul>
       <p style="color:#888; font-size:.82em; margin-top:16px">
-        RINGUE v1.2.2 — Vista interior da academia · Hall da Fama · Coletiva animada · Overhaul do treino 🎉<br>
+        RINGUE v1.4.0 — Rankings historicos · Dinastias · Geracoes · Comparador de campeoes<br>
         Modo Atleta completo · Modo Academia completo · Modo Federação em breve<br>
         <a href="https://github.com/Mateuskage10332608/RINGUE" style="color:#4a9eff">github.com/Mateuskage10332608/RINGUE</a>
       </p>
@@ -2415,7 +2436,7 @@ class UI {
               <div class="hub-record">${p.record} · ${p.kos + p.tkos > 0 ? (p.kos+p.tkos) + ' KOs' : ''}</div>
               ${((p.belts || []).length || (p.trophies || []).length) ? `
                 <div class="hub-belts">
-                  ${(p.belts || []).map(b => { const bi = getBeltInfo(b); const isSuper = (p.superBelts || []).includes(b); const dn = bi.displayName || bi.name; return `<span class="belt-chip ${isSuper ? 'belt-chip-super' : ''}" style="border-color:${bi.color}">${isSuper ? '✨' : bi.icon} ${dn}${isSuper ? ` (${p.beltDefenses[b]} def.)` : ''}</span>`; }).join('')}
+                  ${(p.belts || []).map(b => { const bi = getBeltInfo(b); const isSuper = p.hasSuperBelt(b, p.weightClass); const dn = bi.displayName || bi.name; return `<span class="belt-chip ${isSuper ? 'belt-chip-super' : ''}" style="border-color:${bi.color}">${isSuper ? '✨' : bi.icon} ${dn}${isSuper ? ` (${p.beltDefenses[b]} def.)` : ''}</span>`; }).join('')}
                   ${(p.trophies || []).length ? `<span class="belt-chip" style="border-color:#b8860b;font-size:0.82em">🏅 ${p.trophies.length} troféu${p.trophies.length > 1 ? 's' : ''}</span>` : ''}
                 </div>
               ` : ''}
@@ -2545,6 +2566,10 @@ class UI {
                 <span class="action-icon">📖</span>
                 <div><div class="action-title">Histórico de Lutas</div></div>
               </button>
+              <button class="action-btn action-info" id="btn-boxing-history">
+                <span class="action-icon">#</span>
+                <div><div class="action-title">Historia do Boxe</div><div class="action-sub">Eras, recordes e premios</div></div>
+              </button>
               <button class="action-btn action-info" id="btn-show">
                 <span class="action-icon">🎙️</span>
                 <div><div class="action-title">No Centro do Ringue</div></div>
@@ -2654,6 +2679,7 @@ class UI {
     document.getElementById('btn-stats').onclick    = () => this.show('athleteStats');
     document.getElementById('btn-weight-class').onclick = () => this.show('weightClass');
     document.getElementById('btn-history').onclick  = () => this.show('fightHistory');
+    document.getElementById('btn-boxing-history').onclick = () => this.show('boxingHistory');
     document.getElementById('btn-show').onclick     = () => this.show('analystShow');
     document.getElementById('btn-news').onclick     = () => this.show('newsCenter');
     if (this.gs.mediaCrisis) {
@@ -2798,6 +2824,9 @@ class UI {
         <h2>🏆 Convite de Torneio</h2>
         <div class="info-card" style="margin-bottom:1.5rem">
           <div style="font-size:1.3rem;font-weight:700;margin-bottom:4px">${offer.name}</div>
+          <div class="title-banner" style="margin:8px 0 12px">
+            ${offer.trophy?.icon || '🏆'} Troféu especial: ${offer.trophy?.name || `${offer.name} ${this.gs.year}`}
+          </div>
           <div style="color:var(--muted);margin-bottom:12px">${offer.tier === 'regional' ? 'Torneio Regional' : 'Torneio Local'} · ${offer.weightClass}</div>
           <div class="stat-grid" style="grid-template-columns:1fr 1fr">
             <div class="stat-item"><div class="stat-label">Bolsa por luta</div><div class="stat-val">$${offer.pursePerFight.toLocaleString()}</div></div>
@@ -4322,7 +4351,7 @@ class UI {
       'loss':        { emoji: '📉', word: 'DERROTA',        tagline: 'Toda derrota ensina.',                wordClass: 'word-loss' },
       'draw':        { emoji: '🤝', word: 'EMPATE',         tagline: 'A decisão dividiu opiniões.',         wordClass: 'word-draw' },
       'no-contest':  { emoji: '⚖️', word: 'SEM RESULTADO', tagline: 'O resultado foi anulado.',            wordClass: 'word-draw' },
-      'tournament-win':       { emoji: '🏆', word: 'CAMPEÃO!',  tagline: `${tournResult?.name || 'Torneio'} conquistado! Bolsa: $${(tournResult?.prize||0).toLocaleString()}`, wordClass: 'word-title-win' },
+      'tournament-win':       { emoji: '🏆', word: 'CAMPEÃO!',  tagline: `${tournResult?.trophy || tournResult?.name || 'Torneio'} conquistado! Prêmio: $${(tournResult?.prize||0).toLocaleString()} · +${tournResult?.prestige || 0} prestígio`, wordClass: 'word-title-win' },
       'tournament-advance':   { emoji: '⬆️', word: 'AVANÇOU!',  tagline: `Classificado para ${tournResult?.round || 'próxima fase'}.`, wordClass: 'word-win' },
       'tournament-eliminated':{ emoji: '❌', word: 'ELIMINADO', tagline: 'O torneio terminou aqui. Hora de reconstruir.',              wordClass: 'word-loss' },
     }[moment];
@@ -5466,7 +5495,8 @@ class UI {
     const territorialScore = (p.titlesWon || [])
       .filter(b => !WORLD_ORGS.includes(b))
       .reduce((total, b) => total + getBeltInfo(b).tier * 8, 0) +
-      (p.trophies || []).reduce((total, t) => total + (t.tier === 'national' ? 12 : t.tier === 'regional' ? 6 : 3), 0);
+      (p.trophies || []).reduce((total, t) => total +
+        (t.prestige ? Math.round(t.prestige / 2) : t.tier === 'national' ? 12 : t.tier === 'regional' ? 6 : 3), 0);
     const notableWins = (p.fightHistory || []).filter(h => h.result === 'W' && h.opponentRanking && h.opponentRanking <= 5).length;
     return (
       p.wins * 3 +
@@ -5543,10 +5573,20 @@ class UI {
     }
     // Troféus (local/regional/nacional — não únicos)
     const trophyCount = (p.trophies || []).length;
+    const tournamentTrophies = (p.trophies || []).filter(t => t.isTournament || t.type === 'tournament_champion');
+    for (const trophy of tournamentTrophies) {
+      const division = WEIGHT_CLASSES.find(w => w.id === trophy.weightClass);
+      majorAchievements.push({
+        icon: trophy.icon || '🏆',
+        text: `${trophy.name}${division ? ` · ${division.name}` : ''}`,
+        color: '#d4af37',
+      });
+    }
     if (trophyCount > 0) {
-      const natCount  = (p.trophies||[]).filter(t => t.tier === 'national').length;
-      const regCount  = (p.trophies||[]).filter(t => t.tier === 'regional').length;
-      const locCount  = (p.trophies||[]).filter(t => t.tier === 'local').length;
+      const territorial = (p.trophies || []).filter(t => !t.isTournament && t.type !== 'tournament_champion');
+      const natCount  = territorial.filter(t => t.tier === 'national').length;
+      const regCount  = territorial.filter(t => t.tier === 'regional').length;
+      const locCount  = territorial.filter(t => t.tier === 'local').length;
       if (natCount > 0) minorAchievements.push({ icon: '🏅', text: `${natCount}× Campeão Nacional`, color: '#b8860b' });
       if (regCount > 0) minorAchievements.push({ icon: '🏅', text: `${regCount}× Campeão Regional`, color: '#b8860b' });
       if (locCount > 0) minorAchievements.push({ icon: '🏅', text: `${locCount}× Campeão Local`, color: '#b8860b' });
@@ -5649,13 +5689,17 @@ class UI {
           <div class="legacy-section">
             <h3>✨ Super-Cinturões</h3>
             <p class="muted" style="font-size:.82rem; margin-bottom:8px">Conquistados após 10 defesas do mesmo cinturão mundial.</p>
-            ${(p.superBelts || []).map(org => {
+            ${(p.superBelts || []).map(entry => {
+              const org = typeof entry === 'string' ? entry : entry.belt;
+              const weightClass = typeof entry === 'string' ? p.weightClass : entry.weightClass;
+              const division = WEIGHT_CLASSES.find(w => w.id === weightClass);
               const bi = getBeltInfo(org);
-              const defs = (p.beltDefenses || {})[org] || 10;
+              const defs = (typeof entry === 'object' && entry.defenses) ||
+                (weightClass === p.weightClass ? (p.beltDefenses || {})[org] : 0) || 10;
               return `<div class="super-belt-row">
                 <span class="super-belt-icon">✨</span>
                 <div>
-                  <div style="font-weight:700; color:${bi.color}">${bi.name}</div>
+                  <div style="font-weight:700; color:${bi.color}">Super-Cinturão ${bi.name} · ${division?.name || weightClass}</div>
                   <div class="muted" style="font-size:.8rem">${defs} defesas — nível lendário</div>
                 </div>
               </div>`;
@@ -5670,7 +5714,7 @@ class UI {
             ${worldHeld.map(org => {
               const bi   = getBeltInfo(org);
               const defs = (p.beltDefenses || {})[org] || 0;
-              const isSuper = (p.superBelts || []).includes(org);
+              const isSuper = p.hasSuperBelt(org, p.weightClass);
               return `<div class="notable-win-row">
                 <span>${isSuper ? '✨' : bi.icon} ${bi.name}</span>
                 <span class="muted">${defs} defesa${defs !== 1 ? 's' : ''}${isSuper ? ' · Super-Cinturão' : ''}</span>
@@ -5836,8 +5880,183 @@ class UI {
     `;
   }
 
+  _render_boxingHistory() {
+    const records = this.gs.worldRecords || {};
+    const eras = this.gs.eraHistory || [];
+    const awards = this.gs.annualAwards || [];
+    const historicalRankings = this.gs.historicalRankings || [];
+    const dynasties = this.gs.dynastyHistory || [];
+    const generations = this.gs.generationHistory || [];
+    const comparisonPool = [
+      ...(this.gs.hallOfFame || []).map(entry => ({ id:entry.id, name:entry.name })),
+      ...this.gs._everyFighter()
+        .filter(fighter => !fighter.retiredAt && ((fighter.belts || []).some(belt => WORLD_ORGS.includes(belt)) || fighter.isPlayer))
+        .map(fighter => ({ id:fighter.id, name:fighter.name })),
+    ].filter((entry,index,array) => array.findIndex(item => item.id === entry.id) === index);
+    const recordLabels = {
+      careerWins: 'Mais vitorias', careerKOs: 'Mais nocautes',
+      titleDefenses: 'Mais defesas de titulo', goatScore: 'Maior pontuacao GOAT',
+      attendance: 'Maior publico', gate: 'Maior renda',
+    };
+    const formatRecord = (key, value) => key === 'gate'
+      ? formatCurrency(value || 0)
+      : Number(value || 0).toLocaleString('pt-BR');
+    const awardNames = {
+      fighterOfYear: 'Lutador do Ano', fightOfYear: 'Luta do Ano',
+      knockoutOfYear: 'Nocaute do Ano', prospectOfYear: 'Revelacao do Ano',
+      upsetOfYear: 'Zebra do Ano', comebackOfYear: 'Retorno do Ano',
+    };
+    const awardWinner = award => {
+      if (!award) return 'Nao concedido';
+      if (award.name) return award.name;
+      if (award.fighterAName) return `${award.fighterAName} vs ${award.fighterBName}`;
+      if (award.winnerName) return award.winnerName;
+      return 'Nao concedido';
+    };
+
+    this.root.innerHTML = `
+      <div class="screen">
+        <button class="btn btn-ghost boxing-history-back" style="margin-bottom:16px">Voltar</button>
+        <h1 class="screen-title">Historia do Boxe</h1>
+        <p class="muted">A linha do tempo deste slot. Eras, recordes e premios evoluem apenas dentro deste universo.</p>
+        <h2>Recordes Mundiais</h2>
+        <div class="stats-grid">
+          ${Object.entries(recordLabels).map(([key, label]) => {
+            const record = records[key] || {};
+            return `<div class="stat-card"><div class="stat-label">${label}</div>
+              <div class="stat-value">${formatRecord(key, record.value)}</div>
+              <div class="muted">${record.holder || 'Sem recordista'}${record.year ? ` · ${record.year}` : ''}</div></div>`;
+          }).join('')}
+        </div>
+        <h2 style="margin-top:24px">Eras Historicas</h2>
+        <div class="hof-list">
+          ${eras.map(era => `<div class="hof-card"><div class="hof-card-body">
+            <div class="hof-name-row"><span class="hof-name">${era.label}</span><span class="hof-era">${era.startYear}-${era.endYear}</span></div>
+            <div>${era.leader}${era.weightClass ? ` · ${era.weightClass}` : ''}</div>
+            <div class="muted">${era.years || 1} ano(s) · pico ${Number(era.peakScore || 0).toLocaleString('pt-BR')} pts</div>
+          </div></div>`).join('')}
+        </div>
+        <h2 style="margin-top:24px">Dinastias</h2>
+        <div class="stats-grid">
+          ${dynasties.map(dynasty => `<div class="stat-card">
+            <div class="stat-label">${dynasty.label}</div>
+            <div style="font-weight:800;margin:8px 0">${dynasty.leader}</div>
+            <div class="stat-value">${dynasty.startYear}-${dynasty.endYear}</div>
+            <div class="muted">${dynasty.seasons} temporada(s) · ${dynasty.defenses || 0} defesas · pico ${Number(dynasty.peakScore || 0).toLocaleString('pt-BR')}</div>
+          </div>`).join('')}
+        </div>
+        <h2 style="margin-top:24px">Gerações</h2>
+        <div class="hof-list">
+          ${generations.map(generation => `<div class="hof-card"><div class="hof-card-body">
+            <div class="hof-name-row"><span class="hof-name">${generation.label}</span><span class="hof-era">${generation.startYear}-${generation.endYear}</span></div>
+            <div>${generation.theme}</div>
+            <div class="muted">Principais nomes: ${(generation.leaders || []).join(', ') || 'Em definição'}</div>
+          </div></div>`).join('')}
+        </div>
+        <h2 style="margin-top:24px">Rankings Históricos</h2>
+        <div class="annual-awards-archive">
+          ${historicalRankings.map((snapshot,index) => `<details class="card historical-ranking-year" ${index === 0 ? 'open' : ''}>
+            <summary><strong>Ranking de ${snapshot.year}</strong><span class="muted">Top ${(snapshot.rankings || []).length}</span></summary>
+            <div class="historical-ranking-list">
+              ${(snapshot.rankings || []).slice(0,25).map(entry => `<div class="notable-win-row">
+                <span><strong>#${entry.rank}</strong> ${entry.name}<br><small class="muted">${entry.record || ''} · ${WEIGHT_CLASSES.find(w => w.id === entry.weightClass)?.name || entry.weightClass || ''}</small></span>
+                <span>${Number(entry.goatScore || 0).toLocaleString('pt-BR')} pts</span>
+              </div>`).join('')}
+            </div>
+          </details>`).join('')}
+        </div>
+        <h2 style="margin-top:24px">Comparar Campeões</h2>
+        <div class="card historical-comparison">
+          <div class="comparison-selectors">
+            <select id="history-compare-a">${comparisonPool.map(entry => `<option value="${entry.id}">${entry.name}</option>`).join('')}</select>
+            <span>vs</span>
+            <select id="history-compare-b">${comparisonPool.map((entry,index) => `<option value="${entry.id}" ${index === 1 ? 'selected' : ''}>${entry.name}</option>`).join('')}</select>
+            <button class="btn btn-secondary" id="btn-history-compare">Comparar</button>
+          </div>
+          <div id="history-comparison-result" class="comparison-result muted">Escolha dois campeões para comparar seus legados.</div>
+        </div>
+        <h2 style="margin-top:24px">Premios Anuais</h2>
+        <div class="annual-awards-archive">
+          ${awards.map((entry, index) => `
+            <details class="card annual-awards-year" ${index === 0 ? 'open' : ''}>
+              <summary>
+                <strong>${entry.year}</strong>
+                <span class="muted">${Object.keys(entry.awards || {}).length} premios</span>
+              </summary>
+              <div class="stats-grid annual-awards-grid">
+                ${Object.entries(entry.awards || {}).map(([key, award]) =>
+                  `<div><strong>${awardNames[key] || key}</strong><div class="muted">${awardWinner(award)}</div></div>`
+                ).join('')}
+              </div>
+            </details>
+          `).join('')}
+        </div>
+        <button class="btn btn-ghost boxing-history-back" style="margin-top:16px">Voltar</button>
+      </div>`;
+    document.querySelectorAll('.boxing-history-back').forEach(button => {
+      button.onclick = () => this.show(this.gs.gameMode === 'academy' ? 'academyHub' : 'careerHub');
+    });
+    const compareButton = document.getElementById('btn-history-compare');
+    if (compareButton) compareButton.onclick = () => {
+      const comparison = this.gs.getHistoricalComparison(
+        document.getElementById('history-compare-a').value,
+        document.getElementById('history-compare-b').value
+      );
+      const result = document.getElementById('history-comparison-result');
+      if (!comparison) {
+        result.innerHTML = 'Não foi possível comparar esses campeões.';
+        return;
+      }
+      const metric = (label,key) => `<div><span>${label}</span><strong>${comparison.a[key] || 0} × ${comparison.b[key] || 0}</strong></div>`;
+      result.innerHTML = `<h3>${comparison.a.name} vs ${comparison.b.name}</h3>
+        <div class="comparison-metrics">
+          ${metric('Pontos GOAT','goatScore')}${metric('Defesas','titleDefenses')}
+          ${metric('Títulos mundiais','worldTitles')}${metric('Divisões','divisions')}
+          ${metric('Vitórias','wins')}${metric('Nocautes','kos')}
+        </div><strong>${comparison.verdict}</strong>`;
+    };
+  }
+
+  _render_annualAwardsCeremony() {
+    const ceremony = this.gs.pendingAwardCeremony;
+    if (!ceremony) return this.show(this.gs.gameMode === 'academy' ? 'academyHub' : 'careerHub');
+    const entries = Object.entries(ceremony.awards || {});
+    const labels = {
+      fighterOfYear: 'Lutador do Ano', fightOfYear: 'Luta do Ano',
+      knockoutOfYear: 'Nocaute do Ano', prospectOfYear: 'Revelacao do Ano',
+      upsetOfYear: 'Zebra do Ano', comebackOfYear: 'Retorno do Ano',
+    };
+    const index = Math.min(ceremony.currentIndex || 0, Math.max(0, entries.length - 1));
+    const [key, award] = entries[index] || ['fighterOfYear', null];
+    const winner = award?.name || award?.winnerName ||
+      (award?.fighterAName ? `${award.fighterAName} vs ${award.fighterBName}` : 'Premio nao concedido');
+    const isLast = index >= entries.length - 1;
+    this.root.innerHTML = `<div class="screen" style="min-height:75vh;display:grid;place-items:center;text-align:center">
+      <div class="card" style="width:min(720px,95%);padding:48px;animation:fadeIn .5s ease">
+        <div style="font-size:.9rem;letter-spacing:.2em;color:#d4af37">CERIMONIA ANUAL · ${ceremony.year}</div>
+        <div style="font-size:4rem;margin:24px">★</div>
+        <h1>${labels[key] || key}</h1>
+        <div style="font-size:1.6rem;font-weight:800;margin:20px 0">${winner}</div>
+        <div class="muted">${award?.method ? `${award.method}${award.round ? ` · R${award.round}` : ''}` : ''}</div>
+        <button class="btn btn-primary" id="btn-award-next" style="margin-top:32px">${isLast ? 'Encerrar cerimonia' : 'Proximo premio'}</button>
+      </div>
+    </div>`;
+    document.getElementById('btn-award-next').onclick = () => {
+      if (isLast) {
+        this.gs.completeAwardCeremony();
+        this.gs.save();
+        this.show(this.gs.gameMode === 'academy' ? 'academyHub' : 'careerHub');
+      } else {
+        ceremony.currentIndex = index + 1;
+        this.gs.save();
+        this.show('annualAwardsCeremony');
+      }
+    };
+  }
+
   _render_hallOfFame() {
     const hof = (this.gs.hallOfFame || []).slice().sort((a, b) => (b.goatScore || 0) - (a.goatScore || 0));
+    const goatDebate = hof.slice(0, 3);
     const player = this.gs.player;
     const playerInducted = hof.some(e => e.isPlayer);
 
@@ -5852,7 +6071,24 @@ class UI {
           </div>
         ` : player && !player.retiredAt ? `
           <div class="hof-criteria-hint">
-            Para entrar no Hall da Fama: 1 título mundial + 5 defesas, ou múltiplas divisões, ou 35+ vitórias com títulos.
+            Para entrar no Hall da Fama: pelo menos 800 pontos GOAT, 1 título mundial e 5 defesas, múltiplas divisões ou 35+ vitórias.
+          </div>
+        ` : ''}
+
+        ${goatDebate.length ? `
+          <div class="legacy-section" style="border-color:#d4af37;margin-bottom:20px">
+            <h2 style="color:#d4af37;margin-bottom:4px">O Debate GOAT</h2>
+            <p class="muted">Os três maiores legados desta linha do tempo.</p>
+            <div class="stats-grid">
+              ${goatDebate.map((legend, i) => `
+                <div class="stat-card" style="${i === 0 ? 'border-color:#d4af37' : ''}">
+                  <div class="stat-label">#${i + 1} ${i === 0 ? 'Atual GOAT' : 'Candidato'}</div>
+                  <div style="font-weight:800;font-size:1.05rem;margin:8px 0">${legend.flag || ''} ${legend.name}</div>
+                  <div class="stat-value">${Number(legend.goatScore || 0).toLocaleString('pt-BR')}</div>
+                  <div class="muted">pontos GOAT · ${legend.era || ''}</div>
+                </div>
+              `).join('')}
+            </div>
           </div>
         ` : ''}
 

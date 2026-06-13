@@ -22,6 +22,7 @@ function loadGame() {
     },
     document: {
       getElementById: () => ({ onclick: null }),
+      querySelectorAll: () => [],
       documentElement: { lang: 'pt-BR' },
     },
   });
@@ -268,16 +269,16 @@ test('assinar contrato paga luvas e força promotora nas ofertas', () => {
     })
   );
   gs.rebuildRankings();
-  const promoter = PROMOTERS.find(p => p.id === 'thunder');
+  const promoter = PROMOTERS.find(p => p.id === 'apex');
   const offer = gs._makeContractOffer(promoter, 0);
   gs.contractOffers = [offer];
   const moneyBefore = gs.player.money;
 
   assert.equal(gs.acceptContractOffer(offer.id), true);
   assert.equal(gs.player.money, moneyBefore + offer.signingBonus);
-  assert.equal(gs.player.contract.promoterId, 'thunder');
+  assert.equal(gs.player.contract.promoterId, 'apex');
   assert.ok(gs.availableFights.length > 0);
-  assert.equal(gs.availableFights.every(f => f.promoter.id === 'thunder'), true);
+  assert.equal(gs.availableFights.every(f => f.promoter.id === 'apex'), true);
 });
 
 test('contrato aplica bonus de vitoria e nocaute no pagamento', () => {
@@ -328,7 +329,7 @@ test('agente melhora termos basicos das propostas', () => {
     wins: 10,
     popularity: 40,
   });
-  const promoter = PROMOTERS.find(p => p.id === 'thunder');
+  const promoter = PROMOTERS.find(p => p.id === 'apex');
   const withoutAgent = gs._makeContractOffer(promoter, 0);
   const withAgent = gs._makeContractOffer(promoter, 0.25);
 
@@ -713,13 +714,13 @@ test('potencial afeta crescimento sem criar teto abaixo de 99', () => {
     potential: 93,
     discipline: 99,
   });
-  const focus = TRAINING_FOCUSES.find(item => item.id === 'straight');
+  const focus = TRAINING_FOCUSES.find(item => item.id === 'power_punches');
   const originalRisk = focus.risk;
   const originalRandom = Math.random;
   focus.risk = 0;
   Math.random = () => 0.99;
   try {
-    new TrainingCamp(fighter, 12, ['straight']).simulate();
+    new TrainingCamp(fighter, 12, ['power_punches']).simulate();
   } finally {
     focus.risk = originalRisk;
     Math.random = originalRandom;
@@ -1597,7 +1598,148 @@ test('torneio avanca ate a final e concede premio e trofeu', () => {
   assert.equal(final.type, 'tournament-win');
   assert.equal(gs.activeTournament, null);
   assert.equal(gs.player.money, moneyBefore + 3200);
-  assert.ok(gs.player.trophies.some(trophy => trophy.name === 'Copa Teste' && trophy.isTournament));
+  assert.ok(gs.player.trophies.some(trophy => trophy.name.startsWith('Copa Teste') && trophy.isTournament));
+  const trophy = gs.player.trophies.find(item => item.isTournament);
+  assert.equal(trophy.type, 'tournament_champion');
+  assert.equal(trophy.weightClass, 'welter');
+  assert.ok(trophy.prestige >= 35);
+  assert.equal(gs.player.tournamentWins, 1);
+  assert.ok(gs.player.tournamentPrestige >= 35);
+});
+
+test('super cinturoes sao unicos por organizacao e categoria', () => {
+  const { Fighter, GameState } = loadGame();
+  const gs = new GameState();
+  gs.player = createFighter(Fighter, {
+    id: 3050,
+    isPlayer: true,
+    weightClass: 'welter',
+    beltDefenses: { WBC: 10 },
+  });
+
+  assert.ok(gs._awardSuperBeltIfEligible(gs.player, 'WBC', 'welter'));
+  assert.equal(gs._awardSuperBeltIfEligible(gs.player, 'WBC', 'welter'), null);
+
+  gs.player.weightClass = 'middle';
+  gs.player.beltDefenses = { WBC: 12 };
+  assert.ok(gs._awardSuperBeltIfEligible(gs.player, 'WBC', 'middle'));
+  assert.equal(gs.player.superBelts.length, 2);
+  assert.equal(gs.player.hasSuperBelt('WBC', 'welter'), true);
+  assert.equal(gs.player.hasSuperBelt('WBC', 'middle'), true);
+});
+
+test('save antigo migra super cinturao simples para a categoria registrada', () => {
+  const { Fighter } = loadGame();
+  const fighter = createFighter(Fighter, {
+    weightClass: 'cruiser',
+    superBelts: ['WBO'],
+    beltDefenses: { WBO: 11 },
+    superBeltHistory: [{ belt: 'WBO', weightClass: 'lheavy', year: 2031, defenses: 10 }],
+  });
+  assert.equal(fighter.superBelts[0].belt, 'WBO');
+  assert.equal(fighter.superBelts[0].weightClass, 'lheavy');
+  assert.equal(fighter.hasSuperBelt('WBO', 'lheavy'), true);
+});
+
+test('cada slot preserva sua propria linha do tempo', () => {
+  const { GameState } = loadGame();
+  const first = new GameState();
+  first.year = 2034;
+  first.worldRecords.goatScore = { value: 3000, holder: 'Campeao do Slot 1', year: 2033 };
+  first.eraHistory.unshift({
+    leaderId: 'slot_one', leader: 'Campeao do Slot 1', startYear: 2030, endYear: 2033,
+    years: 4, peakScore: 3000, label: 'Era do Slot 1',
+  });
+  first.save(1);
+
+  const second = new GameState();
+  second.save(2);
+  const loadedSecond = new GameState();
+  assert.equal(loadedSecond.load(2), true);
+  assert.equal(loadedSecond.year, 2024);
+  assert.notEqual(loadedSecond.worldRecords.goatScore.holder, 'Campeao do Slot 1');
+  assert.equal(loadedSecond.eraHistory.some(era => era.leaderId === 'slot_one'), false);
+});
+
+test('hall da fama e historia persistem no save do slot', () => {
+  const { GameState } = loadGame();
+  const gs = new GameState();
+  gs.hallOfFame.push({
+    id: 'future_legend', name: 'Lenda Futura', goatScore: 1700,
+    record: '40-1-0', kos: 25, koPct: 62, titleDefs: 12, divisions: 2,
+    era: '2024-2040', highlights: [], bio: 'Lenda deste universo.',
+  });
+  gs.annualAwards.unshift({ year: 2024, awards: { fighterOfYear: { name: 'Lenda Futura' } } });
+  gs.save(3);
+
+  const loaded = new GameState();
+  assert.equal(loaded.load(3), true);
+  assert.equal(loaded.hallOfFame.some(entry => entry.id === 'future_legend'), true);
+  assert.equal(loaded.annualAwards.some(entry => entry.year === 2024), true);
+});
+
+test('premios anuais usam arquivo recolhivel e retorno no topo e rodape', () => {
+  const { GameState, UI } = loadGame();
+  const gs = new GameState();
+  const ui = new UI(gs);
+  ui._render_boxingHistory();
+  const html = ui.root.innerHTML;
+
+  assert.equal((html.match(/boxing-history-back/g) || []).length, 2);
+  assert.equal((html.match(/<details class="card annual-awards-year"/g) || []).length, gs.annualAwards.length);
+  assert.equal((html.match(/annual-awards-year" open/g) || []).length, 1);
+});
+
+test('historia dinamica cria ranking anual dinastia e geracao', () => {
+  const { Fighter, GameState } = loadGame();
+  const gs = new GameState();
+  const champion = createFighter(Fighter, {
+    id: 3070, name: 'Campeao Dinastico', belts: ['WBC', 'WBA', 'IBF'],
+    wins: 38, losses: 1, kos: 20, totalTitleWins: 3,
+    beltDefenses: { WBC: 8, WBA: 7, IBF: 6 },
+    worldTitleHistory: [{ belt:'WBC', weightClass:'welter', year:2020 }],
+  });
+  gs.allFighters = [champion];
+
+  gs._snapshotHistoricalRankings(2024, [champion]);
+  gs._updateDynasties(2024, [champion]);
+  gs._updateGenerationHistory(2024);
+
+  const ranking = gs.historicalRankings.find(entry => entry.year === 2024);
+  assert.ok(ranking.rankings.some(entry => entry.fighterId === champion.id));
+  assert.ok(gs.dynastyHistory.some(entry => entry.leaderId === champion.id));
+  assert.ok(gs.generationHistory.some(entry => entry.startYear === 2020 && !entry.historical));
+});
+
+test('comparador historico confronta campeao atual e lenda', () => {
+  const { Fighter, GameState } = loadGame();
+  const gs = new GameState();
+  const champion = createFighter(Fighter, {
+    id: 3080, name: 'Campeao Atual', wins: 45, losses: 0, kos: 30,
+    belts: ['WBC'], totalTitleWins: 2, beltDefenses: { WBC: 12 },
+  });
+  gs.player = champion;
+  const comparison = gs.getHistoricalComparison(champion.id, 'legend_iron_marcus');
+
+  assert.ok(comparison);
+  assert.equal(comparison.a.name, 'Campeao Atual');
+  assert.equal(comparison.b.name, 'Marcus "Iron" Rocha');
+  assert.match(comparison.verdict, /lidera|equilibrados/);
+});
+
+test('historia dinamica persiste isolada no slot', () => {
+  const { GameState } = loadGame();
+  const gs = new GameState();
+  gs.historicalRankings.unshift({ year:2024, rankings:[{ rank:1, fighterId:'slot_history', name:'Lenda do Slot', goatScore:2500 }] });
+  gs.dynastyHistory.unshift({ id:'slot_dynasty', leaderId:'slot_history', leader:'Lenda do Slot', startYear:2024, endYear:2028, seasons:5 });
+  gs.generationHistory.unshift({ id:'slot_generation', startYear:2025, endYear:2029, label:'Geração do Slot', leaders:['Lenda do Slot'] });
+  gs.save(1);
+
+  const loaded = new GameState();
+  assert.equal(loaded.load(1), true);
+  assert.equal(loaded.historicalRankings.some(entry => entry.year === 2024), true);
+  assert.equal(loaded.dynastyHistory.some(entry => entry.id === 'slot_dynasty'), true);
+  assert.equal(loaded.generationHistory.some(entry => entry.id === 'slot_generation'), true);
 });
 
 test('torneio ativo e convites persistem no save', () => {
@@ -1773,7 +1915,7 @@ test('academia contrata prospecto, define treino e processa semana financeira', 
   const weekBefore = gs.week;
   const reports = gs.advanceAcademyWeek();
   assert.equal(gs.week, weekBefore + 1);
-  assert.equal(reports.length, 1);
+  assert.equal(reports.training.length, 1);
   assert.equal(gs.academy.trainingPlan[candidate.id], 'defense');
   assert.ok(gs.academy.transactions.length >= 3);
 });
@@ -1793,7 +1935,7 @@ test('save da academia restaura modo, elenco e candidatos sem atleta controlado'
   assert.equal(restored.academy.name, 'Dinastia');
   assert.equal(restored.getAcademyRoster().length, 1);
   assert.ok(restored.getAcademyCandidates().length > 0);
-  assert.ok(storage.get('ringue_save_2').includes('"saveVersion":4'));
+  assert.ok(storage.get('ringue_save_2').includes('"saveVersion":5'));
 });
 
 test('atleta aposentado funda academia mantendo o mundo e recebendo bonus da carreira', () => {

@@ -83,7 +83,26 @@ class Fighter {
 
     // Legacy tracking
     this.beltDefenses    = opts.beltDefenses    || {};  // { 'WBC': 3 }
-    this.superBelts      = opts.superBelts      || [];  // ['WBC'] = 10+ defenses
+    // Super-cinturões pertencem à combinação organização + categoria.
+    // Saves antigos guardavam apenas "WBC"; a migração os associa à divisão
+    // registrada no histórico (ou à divisão atual como último recurso).
+    this.superBelts = (opts.superBelts || []).map(entry => {
+      if (entry && typeof entry === 'object') {
+        return {
+          belt: entry.belt,
+          weightClass: entry.weightClass || this.weightClass,
+          year: entry.year || opts.retiredAt || 2024,
+          defenses: entry.defenses || 10,
+        };
+      }
+      const historical = (opts.superBeltHistory || []).find(item => item.belt === entry);
+      return {
+        belt: entry,
+        weightClass: historical?.weightClass || this.weightClass,
+        year: historical?.year || opts.retiredAt || 2024,
+        defenses: historical?.defenses || (opts.beltDefenses || {})[entry] || 10,
+      };
+    }).filter(entry => entry.belt && WORLD_ORGS.includes(entry.belt));
     this.totalTitleWins  = opts.totalTitleWins  || 0;
     this.unificationWins = opts.unificationWins || 0;
     this.worldTitleHistory = opts.worldTitleHistory || [...new Set([
@@ -108,6 +127,7 @@ class Fighter {
     this.divisionDefenses = opts.divisionDefenses || {};
     this.superBeltHistory = opts.superBeltHistory || [];
     this.eventHistory = opts.eventHistory || [];
+    this.careerAwards = opts.careerAwards || [];
     this.eventRecords = opts.eventRecords || {
       maxAttendance: 0,
       maxGate: 0,
@@ -419,6 +439,18 @@ class Fighter {
   static fromJSON(data) {
     const f = new Fighter(data);
     return f;
+  }
+
+  hasSuperBelt(belt, weightClass = this.weightClass) {
+    return (this.superBelts || []).some(entry =>
+      (typeof entry === 'string' ? entry === belt : entry.belt === belt && entry.weightClass === weightClass)
+    );
+  }
+
+  getSuperBelt(belt, weightClass = this.weightClass) {
+    return (this.superBelts || []).find(entry =>
+      typeof entry === 'string' ? entry === belt : entry.belt === belt && entry.weightClass === weightClass
+    ) || null;
   }
 }
 
